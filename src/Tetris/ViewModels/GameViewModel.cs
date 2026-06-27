@@ -13,6 +13,7 @@ public sealed class GameViewModel : ObservableObject
 
     private bool _isStarted;
     private bool _isPaused;
+    private bool _gameOverNotified;
 
     private int _score;
     private int _lines;
@@ -38,6 +39,12 @@ public sealed class GameViewModel : ObservableObject
     /// <summary>盤面状態が変化したことを View に通知する（Canvas 再描画用）。</summary>
     public event EventHandler? StateChanged;
 
+    /// <summary>ゲームオーバーになった瞬間に一度だけ発火する（演出開始用）。</summary>
+    public event EventHandler? GameOver;
+
+    /// <summary>ゲーム開始（リスタート含む）の瞬間に発火する（演出のリセット用）。</summary>
+    public event EventHandler? GameStarted;
+
     public int Score { get => _score; private set => SetProperty(ref _score, value); }
     public int Lines { get => _lines; private set => SetProperty(ref _lines, value); }
     public int Level { get => _level; private set => SetProperty(ref _level, value); }
@@ -58,9 +65,11 @@ public sealed class GameViewModel : ObservableObject
         _engine.Start();
         _isStarted = true;
         _isPaused = false;
+        _gameOverNotified = false;
         _timer.Interval = _engine.DropInterval;
         _timer.Start();
         Status = string.Empty;
+        GameStarted?.Invoke(this, EventArgs.Empty);
         AfterChange();
     }
 
@@ -133,12 +142,23 @@ public sealed class GameViewModel : ObservableObject
         Lines = _engine.Lines;
         Level = _engine.Level;
 
+        bool justEnded = false;
         if (_engine.IsGameOver)
         {
             _timer.Stop();
             Status = "GAME OVER\nEnter で再開";
+            if (!_gameOverNotified)
+            {
+                _gameOverNotified = true;
+                justEnded = true;
+            }
         }
 
+        // 先に最終盤面を描画させてから、ゲームオーバー演出を開始する。
         StateChanged?.Invoke(this, EventArgs.Empty);
+        if (justEnded)
+        {
+            GameOver?.Invoke(this, EventArgs.Empty);
+        }
     }
 }

@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using Tetris.ViewModels;
 
 namespace Tetris;
@@ -16,14 +18,73 @@ public partial class MainWindow : Window
 {
     private const int CellSize = 30;
 
+    /// <summary>ゲームオーバー時に盤面を下から埋めていく「埋没」演出の 1 行あたりの間隔。</summary>
+    private static readonly TimeSpan FillStep = TimeSpan.FromMilliseconds(35);
+
+    // 半透明にして、埋没しても下の積み上がったブロックが透けて見えるようにする。
+    private static readonly Color BuryColor = Color.FromArgb(0x80, 0x2A, 0x2A, 0x2E);
+
     private readonly GameViewModel _viewModel = new();
+    private readonly DispatcherTimer _buryTimer = new() { Interval = FillStep };
+    private int _buryRow;
+    private Storyboard? _gameOverInStoryboard;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = _viewModel;
         _viewModel.StateChanged += (_, _) => Render();
+        _viewModel.GameOver += OnGameOver;
+        _viewModel.GameStarted += OnGameStarted;
+        _buryTimer.Tick += OnBuryTick;
         Render();
+    }
+
+    private void OnGameOver(object? sender, EventArgs e)
+    {
+        // 一番下の行から上に向かって灰色ブロックで埋めていく。
+        _buryRow = GameEngine.Rows - 1;
+        _buryTimer.Start();
+    }
+
+    private void OnBuryTick(object? sender, EventArgs e)
+    {
+        if (_buryRow < 0)
+        {
+            _buryTimer.Stop();
+            ShowGameOverOverlay();
+            return;
+        }
+
+        for (int x = 0; x < GameEngine.Columns; x++)
+        {
+            DrawCell(GameCanvas, x, _buryRow, BuryColor);
+        }
+        _buryRow--;
+    }
+
+    private void ShowGameOverOverlay()
+    {
+        GameOverOverlay.Visibility = Visibility.Visible;
+
+        ((Storyboard)FindResource("ShakeStoryboard")).Begin(this);
+
+        _gameOverInStoryboard = (Storyboard)FindResource("GameOverInStoryboard");
+        _gameOverInStoryboard.Begin(this, isControllable: true);
+    }
+
+    private void OnGameStarted(object? sender, EventArgs e)
+    {
+        // 進行中の演出をすべて止めて初期状態に戻す。
+        _buryTimer.Stop();
+        _gameOverInStoryboard?.Stop(this);
+        _gameOverInStoryboard = null;
+
+        GameOverOverlay.Visibility = Visibility.Collapsed;
+        GameOverOverlay.Opacity = 0;
+        GameOverText.Opacity = 1;
+        ShakeTransform.X = 0;
+        ShakeTransform.Y = 0;
     }
 
     private void Render()
