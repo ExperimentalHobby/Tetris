@@ -1,4 +1,5 @@
 using System.Windows.Threading;
+using Tetris.Services;
 
 namespace Tetris.ViewModels;
 
@@ -10,6 +11,7 @@ public sealed class GameViewModel : ObservableObject
 {
     private readonly GameEngine _engine = new();
     private readonly DispatcherTimer _timer = new();
+    private readonly HighScoreService _highScoreService = new();
 
     private bool _isStarted;
     private bool _isPaused;
@@ -18,10 +20,12 @@ public sealed class GameViewModel : ObservableObject
     private int _score;
     private int _lines;
     private int _level = 1;
+    private int _highScore;
     private string _status = "Enter で開始";
 
     public GameViewModel()
     {
+        _highScore = _highScoreService.Load();
         _timer.Tick += OnTick;
 
         StartCommand = new RelayCommand(Start);
@@ -49,9 +53,13 @@ public sealed class GameViewModel : ObservableObject
     /// <summary>満杯行が揃った瞬間に発火する。View が消去アニメーションを再生する。</summary>
     public event EventHandler<LinesClearingEventArgs>? LinesClearing;
 
+    /// <summary>ハイスコアを更新した瞬間に発火する（NEW RECORD 演出用）。</summary>
+    public event EventHandler? NewRecord;
+
     public int Score { get => _score; private set => SetProperty(ref _score, value); }
     public int Lines { get => _lines; private set => SetProperty(ref _lines, value); }
     public int Level { get => _level; private set => SetProperty(ref _level, value); }
+    public int HighScore { get => _highScore; private set => SetProperty(ref _highScore, value); }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
 
     public RelayCommand StartCommand { get; }
@@ -179,6 +187,7 @@ public sealed class GameViewModel : ObservableObject
         }
 
         bool justEnded = false;
+        bool newRecord = false;
         if (_engine.IsGameOver)
         {
             _timer.Stop();
@@ -187,6 +196,12 @@ public sealed class GameViewModel : ObservableObject
             {
                 _gameOverNotified = true;
                 justEnded = true;
+                if (_engine.Score > _highScore)
+                {
+                    HighScore = _engine.Score;
+                    _highScoreService.Save(_highScore);
+                    newRecord = true;
+                }
             }
         }
 
@@ -194,6 +209,10 @@ public sealed class GameViewModel : ObservableObject
         StateChanged?.Invoke(this, EventArgs.Empty);
         if (justEnded)
         {
+            if (newRecord)
+            {
+                NewRecord?.Invoke(this, EventArgs.Empty);
+            }
             GameOver?.Invoke(this, EventArgs.Empty);
         }
     }

@@ -44,6 +44,7 @@ public partial class MainWindow : Window
         _viewModel.GameOver += OnGameOver;
         _viewModel.GameStarted += OnGameStarted;
         _viewModel.LinesClearing += OnLinesClearing;
+        _viewModel.NewRecord += OnNewRecord;
         _buryTimer.Tick += OnBuryTick;
         _lineClearTimer.Tick += OnLineClearFinished;
         Render();
@@ -245,6 +246,52 @@ public partial class MainWindow : Window
             GameCanvas.Children.Remove(element);
         }
         _effectElements.Clear();
+    }
+
+    private void OnNewRecord(object? sender, EventArgs e) => ShowNewRecordBanner();
+
+    /// <summary>ハイスコア更新時に「NEW RECORD!」を盤面中央へ表示する。</summary>
+    private void ShowNewRecordBanner()
+    {
+        var banner = new TextBlock
+        {
+            Text = "NEW RECORD!",
+            FontSize = 36,
+            FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0xC2, 0xE7)),
+            Opacity = 0,
+            RenderTransformOrigin = new Point(0.5, 0.5),
+            Effect = new DropShadowEffect
+            {
+                Color = Color.FromRgb(0xCB, 0xA6, 0xF7),
+                BlurRadius = 24,
+                ShadowDepth = 0,
+                Opacity = 1,
+            },
+        };
+        banner.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double left = (GameEngine.Columns * CellSize - banner.DesiredSize.Width) / 2;
+        double top = (GameEngine.Rows * CellSize) / 2 - 60;
+        Canvas.SetLeft(banner, left);
+        Canvas.SetTop(banner, top);
+
+        var scale = new ScaleTransform(0.4, 0.4);
+        banner.RenderTransform = scale;
+        AddEffectElement(banner);
+
+        var appear = new DoubleAnimation(0.4, 1.0, TimeSpan.FromMilliseconds(350))
+        {
+            EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.6 },
+        };
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, appear);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, appear);
+
+        var fade = new DoubleAnimationUsingKeyFrames();
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(0))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(200))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1200))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1600))));
+        banner.BeginAnimation(OpacityProperty, fade);
     }
 
     private void OnGameOver(object? sender, EventArgs e)
