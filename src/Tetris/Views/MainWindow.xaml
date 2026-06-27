@@ -60,6 +60,7 @@
         <KeyBinding Key="Up"     Command="{Binding RotateCommand}" />
         <KeyBinding Key="Down"   Command="{Binding SoftDropCommand}" />
         <KeyBinding Key="Space"  Command="{Binding HardDropCommand}" />
+        <KeyBinding Key="C"      Command="{Binding HoldCommand}" />
         <KeyBinding Key="Return" Command="{Binding StartCommand}" />
         <KeyBinding Key="P"      Command="{Binding PauseCommand}" />
     </Window.InputBindings>
@@ -76,7 +77,8 @@
         <!-- ゲーム盤面 -->
         <Border Grid.Column="0"
                 BorderBrush="#45475A" BorderThickness="2"
-                Background="#11111B">
+                Background="#181825"
+                VerticalAlignment="Center">
             <Grid>
                 <Canvas x:Name="GameCanvas" Width="300" Height="600" ClipToBounds="True" />
 
@@ -104,7 +106,12 @@
 
         <!-- サイドパネル -->
         <StackPanel Grid.Column="2">
-            <TextBlock Text="NEXT" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,0,0,6" />
+            <TextBlock Text="HOLD" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,0,0,6" />
+            <Border BorderBrush="#45475A" BorderThickness="2" Background="#11111B" Width="140" Height="120">
+                <Canvas x:Name="HoldCanvas" Width="140" Height="120" />
+            </Border>
+
+            <TextBlock Text="NEXT" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,16,0,6" />
             <Border BorderBrush="#45475A" BorderThickness="2" Background="#11111B" Width="140" Height="120">
                 <Canvas x:Name="NextCanvas" Width="140" Height="120" />
             </Border>
@@ -127,6 +134,7 @@
                 <Run Text="↑ : 回転" /><LineBreak />
                 <Run Text="↓ : ソフトドロップ" /><LineBreak />
                 <Run Text="Space : ハードドロップ" /><LineBreak />
+                <Run Text="C : ホールド" /><LineBreak />
                 <Run Text="Enter : 開始 / リスタート" /><LineBreak />
                 <Run Text="P : 一時停止" />
             </TextBlock>

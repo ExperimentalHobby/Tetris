@@ -18,6 +18,12 @@ public sealed class GameEngine
     public Tetromino? Current { get; private set; }
     public TetrominoType NextType { get; private set; }
 
+    /// <summary>ホールド（保管）中のピース種。まだ何も保管していない場合は null。</summary>
+    public TetrominoType? HeldType { get; private set; }
+
+    /// <summary>現在のピースをホールドできるか（1 ピースにつき設置まで 1 回）。</summary>
+    public bool CanHold { get; private set; }
+
     /// <summary>消去待ち（アニメーション中）の行番号。<see cref="CommitClear"/> で実際に消える。</summary>
     public IReadOnlyList<int> PendingClearRows => _pendingClear;
 
@@ -40,6 +46,8 @@ public sealed class GameEngine
         Score = 0;
         Lines = 0;
         IsGameOver = false;
+        HeldType = null;
+        CanHold = true;
         NextType = NextFromBag();
         SpawnNext();
     }
@@ -60,12 +68,19 @@ public sealed class GameEngine
 
     private void SpawnNext()
     {
-        var piece = new Tetromino(NextType)
+        var type = NextType;
+        NextType = NextFromBag();
+        SpawnPiece(type);
+    }
+
+    /// <summary>指定種のピースを出現位置に生成する。置けなければゲームオーバー。</summary>
+    private void SpawnPiece(TetrominoType type)
+    {
+        var piece = new Tetromino(type)
         {
             X = (Columns - 1) / 2 - 1,
             Y = 0,
         };
-        NextType = NextFromBag();
 
         if (!IsValid(piece))
         {
@@ -74,6 +89,32 @@ public sealed class GameEngine
             return;
         }
         Current = piece;
+    }
+
+    /// <summary>
+    /// 現在のピースをホールドする。保管が空ならNEXTを出し、あれば保管ピースと入れ替える。
+    /// 1 ピースにつき設置するまで 1 回だけ可能。
+    /// </summary>
+    public void Hold()
+    {
+        if (IsGameOver || IsClearing || Current is null || !CanHold)
+        {
+            return;
+        }
+
+        var currentType = Current.Type;
+        if (HeldType is null)
+        {
+            HeldType = currentType;
+            SpawnNext();
+        }
+        else
+        {
+            var swap = HeldType.Value;
+            HeldType = currentType;
+            SpawnPiece(swap);
+        }
+        CanHold = false;
     }
 
     public bool MoveLeft() => TryMove(-1, 0);
@@ -180,6 +221,7 @@ public sealed class GameEngine
             }
         }
         Current = null;
+        CanHold = true; // 次のピースは再びホールド可能。
 
         // 満杯行を検出して保留する（実際の消去は CommitClear まで遅延し、アニメを見せる）。
         for (int y = 0; y < Rows; y++)
