@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using Tetris.ViewModels;
@@ -24,8 +25,14 @@ public partial class MainWindow : Window
     // 半透明にして、埋没しても下の積み上がったブロックが透けて見えるようにする。
     private static readonly Color BuryColor = Color.FromArgb(0x80, 0x2A, 0x2A, 0x2E);
 
+    /// <summary>ライン消去アニメーションの総再生時間。</summary>
+    private static readonly TimeSpan LineClearDuration = TimeSpan.FromMilliseconds(480);
+
     private readonly GameViewModel _viewModel = new();
     private readonly DispatcherTimer _buryTimer = new() { Interval = FillStep };
+    private readonly DispatcherTimer _lineClearTimer = new() { Interval = LineClearDuration };
+    private readonly Random _random = new();
+    private readonly List<UIElement> _effectElements = new();
     private int _buryRow;
     private Storyboard? _gameOverInStoryboard;
 
@@ -36,8 +43,208 @@ public partial class MainWindow : Window
         _viewModel.StateChanged += (_, _) => Render();
         _viewModel.GameOver += OnGameOver;
         _viewModel.GameStarted += OnGameStarted;
+        _viewModel.LinesClearing += OnLinesClearing;
         _buryTimer.Tick += OnBuryTick;
+        _lineClearTimer.Tick += OnLineClearFinished;
         Render();
+    }
+
+    private void OnLinesClearing(object? sender, LinesClearingEventArgs e)
+    {
+        bool isTetris = e.Rows.Count >= 4;
+        // テトリス（4 ライン）はバナー演出を見せるため長めに再生する。
+        _lineClearTimer.Interval = isTetris ? TimeSpan.FromMilliseconds(820) : LineClearDuration;
+        PlayLineClearAnimation(e.Rows, isTetris);
+        _lineClearTimer.Start();
+    }
+
+    private void OnLineClearFinished(object? sender, EventArgs e)
+    {
+        _lineClearTimer.Stop();
+        ClearEffectElements();
+        // 実際の消去・下詰めを確定（この後 StateChanged → Render で盤面が描き直される）。
+        _viewModel.CompleteLineClear();
+    }
+
+    /// <summary>消去対象の行を派手に演出する：白い強発光のストロボ＋縦の弾け、色片の飛散。</summary>
+    private void PlayLineClearAnimation(IReadOnlyList<int> rows, bool isTetris)
+    {
+        var engine = _viewModel.Engine;
+        double boardWidth = GameEngine.Columns * CellSize;
+
+        // テトリス時はグローを金色に、点滅・弾けを強くする。
+        Color glow = isTetris ? Color.FromRgb(0xFF, 0xD7, 0x4A) : Color.FromRgb(0x9D, 0xF0, 0xFF);
+        double blur = isTetris ? 60 : 32;
+        double popScale = isTetris ? 3.6 : 2.4;
+        int particleCount = isTetris ? 7 : 3;
+        double particleSpeed = isTetris ? 230 : 130;
+        double particleSizeBonus = isTetris ? 6 : 0;
+
+        foreach (int row in rows)
+        {
+            // (1) 行全体を覆う閃光バー（ストロボ点滅＋縦に弾ける）
+            var flash = new Rectangle
+            {
+                Width = boardWidth,
+                Height = CellSize,
+                Fill = new SolidColorBrush(Colors.White),
+                Opacity = 0,
+                RenderTransformOrigin = new Point(0.5, 0.5),
+                Effect = new DropShadowEffect
+                {
+                    Color = glow,
+                    BlurRadius = blur,
+                    ShadowDepth = 0,
+                    Opacity = 1,
+                },
+            };
+            var flashScale = new ScaleTransform(1, 1);
+            flash.RenderTransform = flashScale;
+            Canvas.SetLeft(flash, 0);
+            Canvas.SetTop(flash, row * CellSize);
+            AddEffectElement(flash);
+
+            var strobe = new DoubleAnimationUsingKeyFrames();
+            strobe.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(0))));
+            strobe.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(50))));
+            strobe.KeyFrames.Add(new LinearDoubleKeyFrame(0.3, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(140))));
+            strobe.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(230))));
+            strobe.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(460))));
+            flash.BeginAnimation(OpacityProperty, strobe);
+
+            var pop = new DoubleAnimation(1, popScale, TimeSpan.FromMilliseconds(460))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            };
+            flashScale.BeginAnimation(ScaleTransform.ScaleYProperty, pop);
+
+            // (2) 各ブロックの色片が四方へ飛び散る
+            for (int x = 0; x < GameEngine.Columns; x++)
+            {
+                var type = engine.Grid[row, x];
+                if (type is null)
+                {
+                    continue;
+                }
+                SpawnParticles(x, row, Tetromino.Colors[type.Value], particleCount, particleSpeed, particleSizeBonus);
+            }
+        }
+
+        // テトリス専用の追加演出：画面シェイク＋「TETRIS!」バナー。
+        if (isTetris)
+        {
+            ((Storyboard)FindResource("ShakeStoryboard")).Begin(this);
+            ShowTetrisBanner();
+        }
+    }
+
+    /// <summary>4 ライン消し時に中央へ「TETRIS!」を弾けるように表示する。</summary>
+    private void ShowTetrisBanner()
+    {
+        var banner = new TextBlock
+        {
+            Text = "TETRIS!",
+            FontSize = 52,
+            FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD7, 0x4A)),
+            Opacity = 0,
+            RenderTransformOrigin = new Point(0.5, 0.5),
+            Effect = new DropShadowEffect
+            {
+                Color = Color.FromRgb(0xFF, 0x6A, 0x00),
+                BlurRadius = 28,
+                ShadowDepth = 0,
+                Opacity = 1,
+            },
+        };
+        banner.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double left = (GameEngine.Columns * CellSize - banner.DesiredSize.Width) / 2;
+        double top = (GameEngine.Rows * CellSize - banner.DesiredSize.Height) / 2;
+        Canvas.SetLeft(banner, left);
+        Canvas.SetTop(banner, top);
+
+        var scale = new ScaleTransform(0.2, 0.2);
+        var rotate = new RotateTransform(-12);
+        var group = new TransformGroup();
+        group.Children.Add(scale);
+        group.Children.Add(rotate);
+        banner.RenderTransform = group;
+        AddEffectElement(banner);
+
+        var appear = new DoubleAnimation(0.2, 1.0, TimeSpan.FromMilliseconds(420))
+        {
+            EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.9 },
+        };
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, appear);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, appear);
+        rotate.BeginAnimation(RotateTransform.AngleProperty,
+            new DoubleAnimation(-12, 0, TimeSpan.FromMilliseconds(420)) { EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut } });
+
+        var fade = new DoubleAnimationUsingKeyFrames();
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(0))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(180))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(620))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800))));
+        banner.BeginAnimation(OpacityProperty, fade);
+    }
+
+    private void SpawnParticles(int col, int row, Color color, int count, double speedBase, double sizeBonus)
+    {
+        double centerX = col * CellSize + CellSize / 2.0;
+        double centerY = row * CellSize + CellSize / 2.0;
+
+        for (int i = 0; i < count; i++)
+        {
+            double size = 6 + sizeBonus + _random.NextDouble() * 8;
+            var particle = new Rectangle
+            {
+                Width = size,
+                Height = size,
+                Fill = new SolidColorBrush(color),
+                RenderTransformOrigin = new Point(0.5, 0.5),
+            };
+
+            var translate = new TranslateTransform();
+            var rotate = new RotateTransform();
+            var group = new TransformGroup();
+            group.Children.Add(rotate);
+            group.Children.Add(translate);
+            particle.RenderTransform = group;
+
+            Canvas.SetLeft(particle, centerX - size / 2);
+            Canvas.SetTop(particle, centerY - size / 2);
+            AddEffectElement(particle);
+
+            double angle = _random.NextDouble() * Math.PI * 2;
+            double speed = 50 + _random.NextDouble() * speedBase;
+            double dx = Math.Cos(angle) * speed;
+            double dy = Math.Sin(angle) * speed - 90; // やや上向きに飛ばす
+            var duration = TimeSpan.FromMilliseconds(420 + _random.Next(0, 80));
+
+            translate.BeginAnimation(TranslateTransform.XProperty,
+                new DoubleAnimation(0, dx, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+            translate.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(0, dy, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
+            rotate.BeginAnimation(RotateTransform.AngleProperty,
+                new DoubleAnimation(0, _random.Next(-360, 360), duration));
+            particle.BeginAnimation(OpacityProperty,
+                new DoubleAnimation(1, 0, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
+        }
+    }
+
+    private void AddEffectElement(UIElement element)
+    {
+        _effectElements.Add(element);
+        GameCanvas.Children.Add(element);
+    }
+
+    private void ClearEffectElements()
+    {
+        foreach (var element in _effectElements)
+        {
+            GameCanvas.Children.Remove(element);
+        }
+        _effectElements.Clear();
     }
 
     private void OnGameOver(object? sender, EventArgs e)
@@ -77,6 +284,8 @@ public partial class MainWindow : Window
     {
         // 進行中の演出をすべて止めて初期状態に戻す。
         _buryTimer.Stop();
+        _lineClearTimer.Stop();
+        ClearEffectElements();
         _gameOverInStoryboard?.Stop(this);
         _gameOverInStoryboard = null;
 
