@@ -17,10 +17,18 @@
 ```bash
 dotnet build Tetris.sln            # ビルド
 dotnet run --project src/Tetris    # 実行
+dotnet test Tetris.sln             # テスト（xUnit）
 build.bat                          # ビルド用バッチ（Release。引数で構成指定可）
 ```
 
-VS 2026 はルートの `Tetris.sln` を開く。プロジェクト本体は `src/Tetris/`。
+VS 2026 はルートの `Tetris.sln` を開く。プロジェクト本体は `src/Tetris/`、テストは `tests/Tetris.Tests/`。
+
+## テスト
+
+- **xUnit**。WPF 非依存の `GameEngine` / `Tetromino` のロジックを検証する（`tests/Tetris.Tests/`）
+- `Tetromino` が `Color` を公開しているため、テストプロジェクトも `net10.0-windows` + `UseWPF`
+- 決定的な盤面を組むためのテストシームを `internal` で用意し、`Tetris.csproj` の `InternalsVisibleTo` で `Tetris.Tests` に公開している（`GameEngine.SetCurrentForTest` / `LockCurrentForTest`）
+- 新機能・バグ修正では Red → Green → Refactor を徹底する（後述の作業ルール参照）
 
 ## アーキテクチャ
 
