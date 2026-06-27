@@ -10,12 +10,19 @@ public sealed class GameEngine
 
     private readonly Random _random = new();
     private readonly Queue<TetrominoType> _bag = new();
+    private readonly List<int> _pendingClear = new();
 
     /// <summary>固定済みブロックの色。null は空セル。</summary>
     public TetrominoType?[,] Grid { get; } = new TetrominoType?[Rows, Columns];
 
     public Tetromino? Current { get; private set; }
     public TetrominoType NextType { get; private set; }
+
+    /// <summary>消去待ち（アニメーション中）の行番号。<see cref="CommitClear"/> で実際に消える。</summary>
+    public IReadOnlyList<int> PendingClearRows => _pendingClear;
+
+    /// <summary>満杯行の消去アニメーション待ちかどうか。</summary>
+    public bool IsClearing => _pendingClear.Count > 0;
 
     public int Score { get; private set; }
     public int Lines { get; private set; }
@@ -29,6 +36,7 @@ public sealed class GameEngine
     {
         Array.Clear(Grid, 0, Grid.Length);
         _bag.Clear();
+        _pendingClear.Clear();
         Score = 0;
         Lines = 0;
         IsGameOver = false;
@@ -171,14 +179,10 @@ public sealed class GameEngine
                 Grid[y, x] = Current.Type;
             }
         }
-        ClearLines();
-        SpawnNext();
-    }
+        Current = null;
 
-    private void ClearLines()
-    {
-        int cleared = 0;
-        for (int y = Rows - 1; y >= 0; y--)
+        // 満杯行を検出して保留する（実際の消去は CommitClear まで遅延し、アニメを見せる）。
+        for (int y = 0; y < Rows; y++)
         {
             bool full = true;
             for (int x = 0; x < Columns; x++)
@@ -189,33 +193,63 @@ public sealed class GameEngine
                     break;
                 }
             }
-
             if (full)
             {
-                // 上の行を 1 つずつ下にずらす。
-                for (int row = y; row > 0; row--)
-                {
-                    for (int x = 0; x < Columns; x++)
-                    {
-                        Grid[row, x] = Grid[row - 1, x];
-                    }
-                }
-                for (int x = 0; x < Columns; x++)
-                {
-                    Grid[0, x] = null;
-                }
-                cleared++;
-                y++; // 同じ行をもう一度判定する。
+                _pendingClear.Add(y);
             }
         }
 
-        if (cleared > 0)
+        // 消去待ちが無ければそのまま次のピースへ。あれば呼び出し側の CommitClear を待つ。
+        if (_pendingClear.Count == 0)
         {
-            Lines += cleared;
-            // 消したライン数に応じた得点（レベル補正あり）。
-            int[] table = { 0, 100, 300, 500, 800 };
-            Score += table[cleared] * Level;
+            SpawnNext();
         }
+    }
+
+    /// <summary>保留中の満杯行を実際に消去し、下詰め・加点を行って次のピースを生成する。</summary>
+    public void CommitClear()
+    {
+        if (_pendingClear.Count == 0)
+        {
+            return;
+        }
+
+        int cleared = _pendingClear.Count;
+        var clearSet = new HashSet<int>(_pendingClear);
+
+        // 消去対象でない行を下から順に詰め直す。
+        int writeRow = Rows - 1;
+        for (int readRow = Rows - 1; readRow >= 0; readRow--)
+        {
+            if (clearSet.Contains(readRow))
+            {
+                continue;
+            }
+            if (writeRow != readRow)
+            {
+                for (int x = 0; x < Columns; x++)
+                {
+                    Grid[writeRow, x] = Grid[readRow, x];
+                }
+            }
+            writeRow--;
+        }
+        // 詰めた残りの上部を空にする。
+        for (int row = writeRow; row >= 0; row--)
+        {
+            for (int x = 0; x < Columns; x++)
+            {
+                Grid[row, x] = null;
+            }
+        }
+
+        Lines += cleared;
+        // 消したライン数に応じた得点（レベル補正あり）。
+        int[] table = { 0, 100, 300, 500, 800 };
+        Score += table[cleared] * Level;
+
+        _pendingClear.Clear();
+        SpawnNext();
     }
 
     /// <summary>ハードドロップ時のゴースト（着地予測）位置の Y を返す。</summary>

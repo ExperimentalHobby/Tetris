@@ -30,7 +30,7 @@ public sealed class GameViewModel : ObservableObject
         RotateCommand = new RelayCommand(Rotate, CanPlay);
         SoftDropCommand = new RelayCommand(SoftDrop, CanPlay);
         HardDropCommand = new RelayCommand(HardDrop, CanPlay);
-        PauseCommand = new RelayCommand(TogglePause, () => _isStarted && !_engine.IsGameOver);
+        PauseCommand = new RelayCommand(TogglePause, () => _isStarted && !_engine.IsGameOver && !_engine.IsClearing);
     }
 
     /// <summary>描画に必要な盤面情報へのアクセス（View が読み取り専用で参照する）。</summary>
@@ -45,6 +45,9 @@ public sealed class GameViewModel : ObservableObject
     /// <summary>ゲーム開始（リスタート含む）の瞬間に発火する（演出のリセット用）。</summary>
     public event EventHandler? GameStarted;
 
+    /// <summary>満杯行が揃った瞬間に発火する。View が消去アニメーションを再生する。</summary>
+    public event EventHandler<LinesClearingEventArgs>? LinesClearing;
+
     public int Score { get => _score; private set => SetProperty(ref _score, value); }
     public int Lines { get => _lines; private set => SetProperty(ref _lines, value); }
     public int Level { get => _level; private set => SetProperty(ref _level, value); }
@@ -58,7 +61,7 @@ public sealed class GameViewModel : ObservableObject
     public RelayCommand HardDropCommand { get; }
     public RelayCommand PauseCommand { get; }
 
-    private bool CanPlay() => _isStarted && !_isPaused && !_engine.IsGameOver;
+    private bool CanPlay() => _isStarted && !_isPaused && !_engine.IsGameOver && !_engine.IsClearing;
 
     private void Start()
     {
@@ -75,12 +78,28 @@ public sealed class GameViewModel : ObservableObject
 
     private void OnTick(object? sender, EventArgs e)
     {
-        if (_isPaused || _engine.IsGameOver)
+        if (_isPaused || _engine.IsGameOver || _engine.IsClearing)
         {
             return;
         }
         _engine.SoftDrop();
         _timer.Interval = _engine.DropInterval;
+        AfterChange();
+    }
+
+    /// <summary>消去アニメーション完了後に View から呼ばれ、実際の消去・下詰めを確定する。</summary>
+    public void CompleteLineClear()
+    {
+        if (!_engine.IsClearing)
+        {
+            return;
+        }
+        _engine.CommitClear();
+        if (!_engine.IsGameOver)
+        {
+            _timer.Interval = _engine.DropInterval;
+            _timer.Start();
+        }
         AfterChange();
     }
 
@@ -141,6 +160,15 @@ public sealed class GameViewModel : ObservableObject
         Score = _engine.Score;
         Lines = _engine.Lines;
         Level = _engine.Level;
+
+        // 満杯行が揃ったら、落下を止めて消去アニメーションを再生してもらう。
+        if (_engine.IsClearing)
+        {
+            _timer.Stop();
+            StateChanged?.Invoke(this, EventArgs.Empty); // 満杯のままの盤面を描画
+            LinesClearing?.Invoke(this, new LinesClearingEventArgs(_engine.PendingClearRows));
+            return;
+        }
 
         bool justEnded = false;
         if (_engine.IsGameOver)
