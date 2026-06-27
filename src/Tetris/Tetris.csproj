@@ -7,6 +7,30 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <!-- ビルド出力先をリポジトリのルート直下の bin/ に集約する。 -->
+    <BaseOutputPath>$(MSBuildThisFileDirectory)..\..\bin\</BaseOutputPath>
+  </PropertyGroup>
+
+  <!-- バージョンリソース情報（exe の「プロパティ → 詳細」に反映される） -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+    <!-- 製品バージョンに Git コミットハッシュ（+xxxx）を付けない。 -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>Tetris</Product>
+    <Company>ExperimentalHobby</Company>
+    <Authors>sadaaki</Authors>
+    <Description>C# / .NET 10 / WPF で作ったテトリス</Description>
+    <Copyright>Copyright © 2026 sadaaki</Copyright>
+    <!--
+      OriginalFilename を空にするためカスタム Win32 バージョンリソースを使う。
+      これを指定すると上記バージョン情報からの自動生成は無効になり version.res が使われる。
+      version.rc を編集したら次で再生成する:
+        rc.exe /nologo /fo version.res version.rc
+    -->
+    <Win32Resource>$(MSBuildThisFileDirectory)version.res</Win32Resource>
   </PropertyGroup>
 
 </Project>
