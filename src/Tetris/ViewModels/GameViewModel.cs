@@ -30,6 +30,7 @@ public sealed class GameViewModel : ObservableObject
         RotateCommand = new RelayCommand(Rotate, CanPlay);
         SoftDropCommand = new RelayCommand(SoftDrop, CanPlay);
         HardDropCommand = new RelayCommand(HardDrop, CanPlay);
+        HoldCommand = new RelayCommand(Hold, CanPlay);
         PauseCommand = new RelayCommand(TogglePause, () => _isStarted && !_engine.IsGameOver && !_engine.IsClearing);
     }
 
@@ -59,6 +60,7 @@ public sealed class GameViewModel : ObservableObject
     public RelayCommand RotateCommand { get; }
     public RelayCommand SoftDropCommand { get; }
     public RelayCommand HardDropCommand { get; }
+    public RelayCommand HoldCommand { get; }
     public RelayCommand PauseCommand { get; }
 
     private bool CanPlay() => _isStarted && !_isPaused && !_engine.IsGameOver && !_engine.IsClearing;
@@ -132,6 +134,12 @@ public sealed class GameViewModel : ObservableObject
     {
         _engine.HardDrop();
         _timer.Interval = _engine.DropInterval;
+        AfterChange();
+    }
+
+    private void Hold()
+    {
+        _engine.Hold();
         AfterChange();
     }
 

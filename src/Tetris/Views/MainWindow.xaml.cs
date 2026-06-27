@@ -300,12 +300,32 @@ public partial class MainWindow : Window
     {
         DrawBoard();
         DrawNext();
+        DrawHold();
     }
 
     private void DrawBoard()
     {
         var engine = _viewModel.Engine;
         GameCanvas.Children.Clear();
+
+        // 空セルのグリッド線
+        var gridStroke = new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+        for (int y = 0; y < GameEngine.Rows; y++)
+        {
+            for (int x = 0; x < GameEngine.Columns; x++)
+            {
+                var cell = new Rectangle
+                {
+                    Width = CellSize,
+                    Height = CellSize,
+                    Stroke = gridStroke,
+                    StrokeThickness = 1,
+                };
+                Canvas.SetLeft(cell, x * CellSize);
+                Canvas.SetTop(cell, y * CellSize);
+                GameCanvas.Children.Add(cell);
+            }
+        }
 
         // 固定済みブロック
         for (int y = 0; y < GameEngine.Rows; y++)
@@ -346,12 +366,21 @@ public partial class MainWindow : Window
         }
     }
 
-    private void DrawNext()
+    private void DrawNext() => DrawPiecePreview(NextCanvas, _viewModel.Engine.NextType);
+
+    private void DrawHold() => DrawPiecePreview(HoldCanvas, _viewModel.Engine.HeldType);
+
+    /// <summary>プレビュー枠の中央に指定ピースを描画する（null のときは空にする）。</summary>
+    private static void DrawPiecePreview(Canvas canvas, TetrominoType? type)
     {
-        var engine = _viewModel.Engine;
-        NextCanvas.Children.Clear();
-        var piece = new Tetromino(engine.NextType);
-        var color = Tetromino.Colors[engine.NextType];
+        canvas.Children.Clear();
+        if (type is null)
+        {
+            return;
+        }
+
+        var piece = new Tetromino(type.Value);
+        var color = Tetromino.Colors[type.Value];
 
         // プレビュー領域中央に配置するためのオフセットを計算
         int minX = int.MaxValue, maxX = int.MinValue, minY = int.MaxValue, maxY = int.MinValue;
@@ -366,12 +395,12 @@ public partial class MainWindow : Window
         const int preview = 24;
         double width = (maxX - minX + 1) * preview;
         double height = (maxY - minY + 1) * preview;
-        double left = (NextCanvas.Width - width) / 2;
-        double top = (NextCanvas.Height - height) / 2;
+        double left = (canvas.Width - width) / 2;
+        double top = (canvas.Height - height) / 2;
 
         foreach (var (x, y) in piece.Blocks())
         {
-            DrawRect(NextCanvas,
+            DrawRect(canvas,
                 left + (x - minX) * preview,
                 top + (y - minY) * preview,
                 preview, color);
