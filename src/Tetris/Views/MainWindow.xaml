@@ -119,6 +119,9 @@
             <TextBlock Text="SCORE" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,20,0,2" />
             <TextBlock Text="{Binding Score}" Foreground="#A6E3A1" FontSize="24" FontWeight="Bold" />
 
+            <TextBlock Text="BEST" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
+            <TextBlock Text="{Binding HighScore}" Foreground="#F5C2E7" FontSize="24" FontWeight="Bold" />
+
             <TextBlock Text="LINES" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
             <TextBlock Text="{Binding Lines}" Foreground="#89DCEB" FontSize="24" FontWeight="Bold" />
 
