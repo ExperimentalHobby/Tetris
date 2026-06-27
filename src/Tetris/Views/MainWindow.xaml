@@ -9,6 +9,51 @@
         SizeToContent="WidthAndHeight"
         Background="#1E1E2E"
         ResizeMode="CanMinimize">
+    <Window.Resources>
+        <!-- 画面を激しく揺らす（断末魔のシェイク） -->
+        <Storyboard x:Key="ShakeStoryboard">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShakeTransform" Storyboard.TargetProperty="X">
+                <LinearDoubleKeyFrame Value="0"   KeyTime="0:0:0" />
+                <LinearDoubleKeyFrame Value="-13" KeyTime="0:0:0.05" />
+                <LinearDoubleKeyFrame Value="12"  KeyTime="0:0:0.10" />
+                <LinearDoubleKeyFrame Value="-10" KeyTime="0:0:0.15" />
+                <LinearDoubleKeyFrame Value="8"   KeyTime="0:0:0.20" />
+                <LinearDoubleKeyFrame Value="-5"  KeyTime="0:0:0.25" />
+                <LinearDoubleKeyFrame Value="3"   KeyTime="0:0:0.30" />
+                <LinearDoubleKeyFrame Value="-2"  KeyTime="0:0:0.35" />
+                <LinearDoubleKeyFrame Value="0"   KeyTime="0:0:0.42" />
+            </DoubleAnimationUsingKeyFrames>
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShakeTransform" Storyboard.TargetProperty="Y">
+                <LinearDoubleKeyFrame Value="0"  KeyTime="0:0:0" />
+                <LinearDoubleKeyFrame Value="7"  KeyTime="0:0:0.07" />
+                <LinearDoubleKeyFrame Value="-6" KeyTime="0:0:0.14" />
+                <LinearDoubleKeyFrame Value="4"  KeyTime="0:0:0.21" />
+                <LinearDoubleKeyFrame Value="-3" KeyTime="0:0:0.28" />
+                <LinearDoubleKeyFrame Value="0"  KeyTime="0:0:0.42" />
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
+
+        <!-- 暗転 →「GAME OVER」が叩きつけられ、その後ゆっくり明滅 -->
+        <Storyboard x:Key="GameOverInStoryboard">
+            <DoubleAnimation Storyboard.TargetName="GameOverOverlay" Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.35" />
+            <DoubleAnimation Storyboard.TargetName="GameOverScale" Storyboard.TargetProperty="ScaleX"
+                             From="0.2" To="1" Duration="0:0:0.5">
+                <DoubleAnimation.EasingFunction>
+                    <BackEase EasingMode="EaseOut" Amplitude="0.7" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="GameOverScale" Storyboard.TargetProperty="ScaleY"
+                             From="0.2" To="1" Duration="0:0:0.5">
+                <DoubleAnimation.EasingFunction>
+                    <BackEase EasingMode="EaseOut" Amplitude="0.7" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="GameOverText" Storyboard.TargetProperty="Opacity"
+                             From="1" To="0.5" BeginTime="0:0:0.55" Duration="0:0:0.9"
+                             AutoReverse="True" RepeatBehavior="Forever" />
+        </Storyboard>
+    </Window.Resources>
     <Window.InputBindings>
         <KeyBinding Key="Left"   Command="{Binding MoveLeftCommand}" />
         <KeyBinding Key="Right"  Command="{Binding MoveRightCommand}" />
@@ -18,7 +63,10 @@
         <KeyBinding Key="Return" Command="{Binding StartCommand}" />
         <KeyBinding Key="P"      Command="{Binding PauseCommand}" />
     </Window.InputBindings>
-    <Grid Margin="16">
+    <Grid Margin="16" RenderTransformOrigin="0.5,0.5">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="ShakeTransform" />
+        </Grid.RenderTransform>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="16" />
@@ -29,7 +77,29 @@
         <Border Grid.Column="0"
                 BorderBrush="#45475A" BorderThickness="2"
                 Background="#11111B">
-            <Canvas x:Name="GameCanvas" Width="300" Height="600" ClipToBounds="True" />
+            <Grid>
+                <Canvas x:Name="GameCanvas" Width="300" Height="600" ClipToBounds="True" />
+
+                <!-- ゲームオーバー演出のオーバーレイ（暗転＋テキスト） -->
+                <Border x:Name="GameOverOverlay" Width="300" Height="600"
+                        Background="#820A0204" Opacity="0" Visibility="Collapsed">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock x:Name="GameOverText" Text="GAME OVER"
+                                   Foreground="#FF3B3B" FontSize="40" FontWeight="Bold"
+                                   HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                            <TextBlock.RenderTransform>
+                                <ScaleTransform x:Name="GameOverScale" ScaleX="0.2" ScaleY="0.2" />
+                            </TextBlock.RenderTransform>
+                            <TextBlock.Effect>
+                                <DropShadowEffect Color="#FF0000" BlurRadius="24" ShadowDepth="0" />
+                            </TextBlock.Effect>
+                        </TextBlock>
+                        <TextBlock Text="Enter で再開"
+                                   Foreground="#CDD6F4" FontSize="16"
+                                   HorizontalAlignment="Center" Margin="0,16,0,0" />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Border>
 
         <!-- サイドパネル -->
