@@ -3,3 +3,7 @@
 
 # Python は LF のまま
 *.py text eol=lf
+
+# Win32 リソース: 改行変換で壊さない（.res はバイナリ、.rc は UTF-16）
+*.res binary
+*.rc binary
