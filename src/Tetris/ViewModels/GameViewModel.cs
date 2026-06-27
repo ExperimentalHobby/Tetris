@@ -12,6 +12,7 @@ public sealed class GameViewModel : ObservableObject
     private readonly GameEngine _engine = new();
     private readonly DispatcherTimer _timer = new();
     private readonly HighScoreService _highScoreService = new();
+    private readonly SoundEffectService _soundService = new();
 
     private bool _isStarted;
     private bool _isPaused;
@@ -26,6 +27,7 @@ public sealed class GameViewModel : ObservableObject
     public GameViewModel()
     {
         _highScore = _highScoreService.Load();
+        _engine.PieceLocked += (_, _) => _soundService.PlayLock();
         _timer.Tick += OnTick;
 
         StartCommand = new RelayCommand(Start);
@@ -127,7 +129,10 @@ public sealed class GameViewModel : ObservableObject
 
     private void Rotate()
     {
-        _engine.Rotate();
+        if (_engine.Rotate())
+        {
+            _soundService.PlayRotate();
+        }
         AfterChange();
     }
 
@@ -182,6 +187,10 @@ public sealed class GameViewModel : ObservableObject
         {
             _timer.Stop();
             StateChanged?.Invoke(this, EventArgs.Empty); // 満杯のままの盤面を描画
+            if (_engine.PendingClearRows.Count >= 4)
+                _soundService.PlayTetris();
+            else
+                _soundService.PlayLineClear();
             LinesClearing?.Invoke(this, new LinesClearingEventArgs(_engine.PendingClearRows));
             return;
         }
@@ -196,6 +205,7 @@ public sealed class GameViewModel : ObservableObject
             {
                 _gameOverNotified = true;
                 justEnded = true;
+                _soundService.PlayGameOver();
                 if (_engine.Score > _highScore)
                 {
                     HighScore = _engine.Score;

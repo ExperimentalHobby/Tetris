@@ -35,6 +35,9 @@ public sealed class GameEngine
     public int Level => Lines / 10 + 1;
     public bool IsGameOver { get; private set; }
 
+    /// <summary>ピースが盤面に固定された直後に発火する（効果音などのトリガー用）。</summary>
+    public event EventHandler? PieceLocked;
+
     /// <summary>現在のレベルに応じた 1 ステップの落下間隔。</summary>
     public TimeSpan DropInterval => TimeSpan.FromMilliseconds(Math.Max(80, 800 - (Level - 1) * 70));
 
@@ -222,6 +225,7 @@ public sealed class GameEngine
         }
         Current = null;
         CanHold = true; // 次のピースは再びホールド可能。
+        PieceLocked?.Invoke(this, EventArgs.Empty);
 
         // 満杯行を検出して保留する（実際の消去は CommitClear まで遅延し、アニメを見せる）。
         for (int y = 0; y < Rows; y++)
