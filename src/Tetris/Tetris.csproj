@@ -37,4 +37,12 @@
     <InternalsVisibleTo Include="Tetris.Tests" />
   </ItemGroup>
 
+  <!-- 効果音ファイルをビルド出力の Sounds/ フォルダにコピーする。 -->
+  <ItemGroup>
+    <Content Include="Assets\Sounds\*.mp3;Assets\Sounds\*.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <TargetPath>Sounds\%(Filename)%(Extension)</TargetPath>
+    </Content>
+  </ItemGroup>
+
 </Project>
