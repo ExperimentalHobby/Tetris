@@ -1,0 +1,144 @@
+using System.Windows.Threading;
+
+namespace Tetris.ViewModels;
+
+/// <summary>
+/// ゲーム進行を司る ViewModel。スコア等の状態をバインディングで公開し、入力をコマンド化する。
+/// 盤面の描画自体は View（Canvas）が <see cref="Engine"/> を読み取って行う（ハイブリッド MVVM）。
+/// </summary>
+public sealed class GameViewModel : ObservableObject
+{
+    private readonly GameEngine _engine = new();
+    private readonly DispatcherTimer _timer = new();
+
+    private bool _isStarted;
+    private bool _isPaused;
+
+    private int _score;
+    private int _lines;
+    private int _level = 1;
+    private string _status = "Enter で開始";
+
+    public GameViewModel()
+    {
+        _timer.Tick += OnTick;
+
+        StartCommand = new RelayCommand(Start);
+        MoveLeftCommand = new RelayCommand(MoveLeft, CanPlay);
+        MoveRightCommand = new RelayCommand(MoveRight, CanPlay);
+        RotateCommand = new RelayCommand(Rotate, CanPlay);
+        SoftDropCommand = new RelayCommand(SoftDrop, CanPlay);
+        HardDropCommand = new RelayCommand(HardDrop, CanPlay);
+        PauseCommand = new RelayCommand(TogglePause, () => _isStarted && !_engine.IsGameOver);
+    }
+
+    /// <summary>描画に必要な盤面情報へのアクセス（View が読み取り専用で参照する）。</summary>
+    public GameEngine Engine => _engine;
+
+    /// <summary>盤面状態が変化したことを View に通知する（Canvas 再描画用）。</summary>
+    public event EventHandler? StateChanged;
+
+    public int Score { get => _score; private set => SetProperty(ref _score, value); }
+    public int Lines { get => _lines; private set => SetProperty(ref _lines, value); }
+    public int Level { get => _level; private set => SetProperty(ref _level, value); }
+    public string Status { get => _status; private set => SetProperty(ref _status, value); }
+
+    public RelayCommand StartCommand { get; }
+    public RelayCommand MoveLeftCommand { get; }
+    public RelayCommand MoveRightCommand { get; }
+    public RelayCommand RotateCommand { get; }
+    public RelayCommand SoftDropCommand { get; }
+    public RelayCommand HardDropCommand { get; }
+    public RelayCommand PauseCommand { get; }
+
+    private bool CanPlay() => _isStarted && !_isPaused && !_engine.IsGameOver;
+
+    private void Start()
+    {
+        _engine.Start();
+        _isStarted = true;
+        _isPaused = false;
+        _timer.Interval = _engine.DropInterval;
+        _timer.Start();
+        Status = string.Empty;
+        AfterChange();
+    }
+
+    private void OnTick(object? sender, EventArgs e)
+    {
+        if (_isPaused || _engine.IsGameOver)
+        {
+            return;
+        }
+        _engine.SoftDrop();
+        _timer.Interval = _engine.DropInterval;
+        AfterChange();
+    }
+
+    private void MoveLeft()
+    {
+        _engine.MoveLeft();
+        AfterChange();
+    }
+
+    private void MoveRight()
+    {
+        _engine.MoveRight();
+        AfterChange();
+    }
+
+    private void Rotate()
+    {
+        _engine.Rotate();
+        AfterChange();
+    }
+
+    private void SoftDrop()
+    {
+        _engine.SoftDrop();
+        _timer.Interval = _engine.DropInterval;
+        AfterChange();
+    }
+
+    private void HardDrop()
+    {
+        _engine.HardDrop();
+        _timer.Interval = _engine.DropInterval;
+        AfterChange();
+    }
+
+    private void TogglePause()
+    {
+        if (!_isStarted || _engine.IsGameOver)
+        {
+            return;
+        }
+        _isPaused = !_isPaused;
+        if (_isPaused)
+        {
+            _timer.Stop();
+            Status = "PAUSED";
+        }
+        else
+        {
+            _timer.Start();
+            Status = string.Empty;
+        }
+    }
+
+    /// <summary>エンジン操作後に呼び、バインド値の更新・ゲームオーバー判定・再描画通知を行う。</summary>
+    private void AfterChange()
+    {
+        Score = _engine.Score;
+        Lines = _engine.Lines;
+        Level = _engine.Level;
+
+        if (_engine.IsGameOver)
+        {
+            _timer.Stop();
+            Status = "GAME OVER\nEnter で再開";
+        }
+
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+}

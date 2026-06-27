@@ -15,22 +15,31 @@
 ## ビルドと実行
 
 ```bash
-dotnet build          # ビルド
-dotnet run            # 実行
+dotnet build Tetris.sln            # ビルド
+dotnet run --project src/Tetris    # 実行
+build.bat                          # ビルド用バッチ（Release。引数で構成指定可）
 ```
+
+VS 2026 はルートの `Tetris.sln` を開く。プロジェクト本体は `src/Tetris/`。
 
 ## アーキテクチャ
 
-| ファイル | 役割 |
-| --- | --- |
-| `Tetromino.cs` | テトロミノの形状定義・色・回転（正方行列の回転で姿勢を表現） |
-| `GameEngine.cs` | 盤面（10×20）とゲーム進行。落下・移動・回転・ライン消去・スコア・レベル・7-bag 抽選・ゴースト位置。UI から独立 |
-| `MainWindow.xaml` / `.cs` | レイアウトと描画・キー入力・ゲームループ |
-| `App.xaml` / `.cs` | アプリケーションエントリポイント |
+**ハイブリッド MVVM** 構成。状態表示と入力は MVVM（バインディング/コマンド）、盤面描画は性能上の理由でコードビハインドが担う。
+
+| 層 | ファイル | 役割 |
+| --- | --- | --- |
+| Model | `src/Tetris/Models/Tetromino.cs` | テトロミノの形状定義・色・回転（正方行列の回転で姿勢を表現） |
+| Model | `src/Tetris/Game/GameEngine.cs` | 盤面（10×20）とゲーム進行。落下・移動・回転・ライン消去・スコア・レベル・7-bag 抽選・ゴースト位置。UI から独立 |
+| ViewModel | `src/Tetris/ViewModels/GameViewModel.cs` | スコア/ライン/レベル/状態をバインド公開、入力を `ICommand` 化、`DispatcherTimer` でゲームループを駆動。状態変化を `StateChanged` イベントで View に通知 |
+| ViewModel | `src/Tetris/ViewModels/ObservableObject.cs` | `INotifyPropertyChanged` 基底（`SetProperty`） |
+| ViewModel | `src/Tetris/ViewModels/RelayCommand.cs` | `ICommand` 実装 |
+| View | `src/Tetris/Views/MainWindow.xaml` / `.cs` | レイアウト・バインディング・`InputBindings`（キー→コマンド）。コードビハインドは Canvas 描画のみ |
+| - | `src/Tetris/App.xaml` / `.cs` | アプリケーションエントリポイント |
 
 ### 主要な設計ポイント
 
 - **ロジックと描画の分離**: `GameEngine` は WPF 型に依存しない。テストや UI 差し替えがしやすい
+- **MVVM の境界**: 入力は `MainWindow.xaml` の `InputBindings` から `GameViewModel` のコマンドへ。スコア等は `{Binding}`。盤面は `GameViewModel.StateChanged` を受けて `MainWindow.xaml.cs` が `Engine` を読み取り Canvas に再描画（200 セル超の毎フレーム描画をバインディングで行うのは非効率なため、ここだけコードビハインド）
 - **座標系**: `(X=列, Y=行)`。盤面は `Grid[row, col]`（`TetrominoType?`、null が空セル）
 - **回転**: `Tetromino.Rotated()` が時計回り 90 度回転した新インスタンスを返す。`GameEngine.Rotate()` が簡易ウォールキック（その場→右→左→2マス）を試行する
 - **ピース抽選**: `GameEngine` は 7-bag 方式（7 種を 1 巡ずつシャッフルして配る）

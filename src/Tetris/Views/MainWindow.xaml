@@ -8,8 +8,16 @@
         Title="Tetris"
         SizeToContent="WidthAndHeight"
         Background="#1E1E2E"
-        ResizeMode="CanMinimize"
-        KeyDown="Window_KeyDown">
+        ResizeMode="CanMinimize">
+    <Window.InputBindings>
+        <KeyBinding Key="Left"   Command="{Binding MoveLeftCommand}" />
+        <KeyBinding Key="Right"  Command="{Binding MoveRightCommand}" />
+        <KeyBinding Key="Up"     Command="{Binding RotateCommand}" />
+        <KeyBinding Key="Down"   Command="{Binding SoftDropCommand}" />
+        <KeyBinding Key="Space"  Command="{Binding HardDropCommand}" />
+        <KeyBinding Key="Return" Command="{Binding StartCommand}" />
+        <KeyBinding Key="P"      Command="{Binding PauseCommand}" />
+    </Window.InputBindings>
     <Grid Margin="16">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
@@ -32,16 +40,15 @@
             </Border>
 
             <TextBlock Text="SCORE" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,20,0,2" />
-            <TextBlock x:Name="ScoreText" Text="0" Foreground="#A6E3A1" FontSize="24" FontWeight="Bold" />
+            <TextBlock Text="{Binding Score}" Foreground="#A6E3A1" FontSize="24" FontWeight="Bold" />
 
             <TextBlock Text="LINES" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
-            <TextBlock x:Name="LinesText" Text="0" Foreground="#89DCEB" FontSize="24" FontWeight="Bold" />
+            <TextBlock Text="{Binding Lines}" Foreground="#89DCEB" FontSize="24" FontWeight="Bold" />
 
             <TextBlock Text="LEVEL" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
-            <TextBlock x:Name="LevelText" Text="1" Foreground="#F9E2AF" FontSize="24" FontWeight="Bold" />
+            <TextBlock Text="{Binding Level}" Foreground="#F9E2AF" FontSize="24" FontWeight="Bold" />
 
-            <TextBlock x:Name="StatusText"
-                       Text="Enter で開始"
+            <TextBlock Text="{Binding Status}"
                        Foreground="#F38BA8" FontSize="16" FontWeight="Bold"
                        TextWrapping="Wrap" Margin="0,24,0,0" />
 
