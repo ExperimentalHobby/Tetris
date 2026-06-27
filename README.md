@@ -12,8 +12,11 @@ C# / .NET 10 / WPF で作ったテトリスです。
 ## 実行方法
 
 ```bash
-dotnet run
+dotnet run --project src/Tetris        # 実行
+build.bat                              # ビルドのみ（Release 構成）
 ```
+
+Visual Studio 2026 の場合はルートの `Tetris.sln` を開いてビルド・実行できます。
 
 ## 操作方法
 
@@ -35,8 +38,14 @@ dotnet run
 
 ## ファイル構成
 
-| ファイル | 役割 |
-| --- | --- |
-| `Tetromino.cs` | テトロミノの形状・色・回転 |
-| `GameEngine.cs` | 盤面・ゲーム進行ロジック（描画とは独立） |
-| `MainWindow.xaml` / `.cs` | UI レイアウトと描画・入力処理 |
+```
+Tetris.sln                         ソリューション（VS 2026 で開く）
+build.bat                          ビルド用バッチ
+src/Tetris/
+  Tetris.csproj                    プロジェクト
+  App.xaml / App.xaml.cs           アプリケーションエントリポイント
+  AssemblyInfo.cs
+  Models/  Tetromino.cs            テトロミノの形状・色・回転
+  Game/    GameEngine.cs           盤面・ゲーム進行ロジック（描画とは独立）
+  Views/   MainWindow.xaml / .cs   UI レイアウトと描画・入力処理
+```

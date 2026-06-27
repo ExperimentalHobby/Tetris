@@ -1,147 +1,40 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using System.Windows.Threading;
+using Tetris.ViewModels;
 
 namespace Tetris;
 
 /// <summary>
 /// Interaction logic for MainWindow.xaml
+///
+/// ハイブリッド MVVM: ゲーム進行と状態は <see cref="GameViewModel"/> が担い、
+/// このコードビハインドは性能上の理由から Canvas への盤面描画のみを受け持つ。
 /// </summary>
 public partial class MainWindow : Window
 {
     private const int CellSize = 30;
 
-    private readonly GameEngine _engine = new();
-    private readonly DispatcherTimer _timer = new();
-    private bool _isPaused;
-    private bool _isStarted;
+    private readonly GameViewModel _viewModel = new();
 
     public MainWindow()
     {
         InitializeComponent();
-        _timer.Tick += OnTick;
+        DataContext = _viewModel;
+        _viewModel.StateChanged += (_, _) => Render();
         Render();
-    }
-
-    private void OnTick(object? sender, EventArgs e)
-    {
-        if (_isPaused || _engine.IsGameOver)
-        {
-            return;
-        }
-        _engine.SoftDrop();
-        _timer.Interval = _engine.DropInterval;
-        Render();
-        if (_engine.IsGameOver)
-        {
-            EndGame();
-        }
-    }
-
-    private void StartGame()
-    {
-        _engine.Start();
-        _isStarted = true;
-        _isPaused = false;
-        _timer.Interval = _engine.DropInterval;
-        _timer.Start();
-        StatusText.Text = string.Empty;
-        Render();
-    }
-
-    private void EndGame()
-    {
-        _timer.Stop();
-        StatusText.Text = "GAME OVER\nEnter で再開";
-    }
-
-    private void Window_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            StartGame();
-            e.Handled = true;
-            return;
-        }
-
-        if (!_isStarted || _engine.IsGameOver)
-        {
-            return;
-        }
-
-        if (e.Key == Key.P)
-        {
-            TogglePause();
-            e.Handled = true;
-            return;
-        }
-
-        if (_isPaused)
-        {
-            return;
-        }
-
-        switch (e.Key)
-        {
-            case Key.Left:
-                _engine.MoveLeft();
-                break;
-            case Key.Right:
-                _engine.MoveRight();
-                break;
-            case Key.Up:
-                _engine.Rotate();
-                break;
-            case Key.Down:
-                _engine.SoftDrop();
-                _timer.Interval = _engine.DropInterval;
-                break;
-            case Key.Space:
-                _engine.HardDrop();
-                _timer.Interval = _engine.DropInterval;
-                break;
-            default:
-                return;
-        }
-
-        Render();
-        if (_engine.IsGameOver)
-        {
-            EndGame();
-        }
-        e.Handled = true;
-    }
-
-    private void TogglePause()
-    {
-        _isPaused = !_isPaused;
-        if (_isPaused)
-        {
-            _timer.Stop();
-            StatusText.Text = "PAUSED";
-        }
-        else
-        {
-            _timer.Start();
-            StatusText.Text = string.Empty;
-        }
     }
 
     private void Render()
     {
-        ScoreText.Text = _engine.Score.ToString();
-        LinesText.Text = _engine.Lines.ToString();
-        LevelText.Text = _engine.Level.ToString();
-
         DrawBoard();
         DrawNext();
     }
 
     private void DrawBoard()
     {
+        var engine = _viewModel.Engine;
         GameCanvas.Children.Clear();
 
         // 固定済みブロック
@@ -149,7 +42,7 @@ public partial class MainWindow : Window
         {
             for (int x = 0; x < GameEngine.Columns; x++)
             {
-                var type = _engine.Grid[y, x];
+                var type = engine.Grid[y, x];
                 if (type is not null)
                 {
                     DrawCell(GameCanvas, x, y, Tetromino.Colors[type.Value]);
@@ -157,10 +50,10 @@ public partial class MainWindow : Window
             }
         }
 
-        // ゴースト（着地予測）
-        if (_engine.Current is { } current)
+        // ゴースト（着地予測）と落下中のピース
+        if (engine.Current is { } current)
         {
-            int ghostY = _engine.GhostY();
+            int ghostY = engine.GhostY();
             int offset = ghostY - current.Y;
             var ghostColor = Tetromino.Colors[current.Type];
             foreach (var (bx, by) in current.Blocks())
@@ -173,7 +66,6 @@ public partial class MainWindow : Window
                 }
             }
 
-            // 落下中のピース
             foreach (var (bx, by) in current.Blocks())
             {
                 if (by >= 0)
@@ -186,9 +78,10 @@ public partial class MainWindow : Window
 
     private void DrawNext()
     {
+        var engine = _viewModel.Engine;
         NextCanvas.Children.Clear();
-        var piece = new Tetromino(_engine.NextType);
-        var color = Tetromino.Colors[_engine.NextType];
+        var piece = new Tetromino(engine.NextType);
+        var color = Tetromino.Colors[engine.NextType];
 
         // プレビュー領域中央に配置するためのオフセットを計算
         int minX = int.MaxValue, maxX = int.MinValue, minY = int.MaxValue, maxY = int.MinValue;
