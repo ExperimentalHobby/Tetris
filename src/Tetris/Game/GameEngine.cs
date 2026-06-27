@@ -252,6 +252,12 @@ public sealed class GameEngine
         SpawnNext();
     }
 
+    /// <summary>テスト用: 現在の落下ピースを差し替える（決定的な盤面を作るため）。</summary>
+    internal void SetCurrentForTest(Tetromino piece) => Current = piece;
+
+    /// <summary>テスト用: 現在のピースをその場で固定し、満杯行の検出まで行う。</summary>
+    internal void LockCurrentForTest() => LockPiece();
+
     /// <summary>ハードドロップ時のゴースト（着地予測）位置の Y を返す。</summary>
     public int GhostY()
     {

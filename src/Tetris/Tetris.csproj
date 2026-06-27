@@ -33,4 +33,8 @@
     <Win32Resource>$(MSBuildThisFileDirectory)version.res</Win32Resource>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tetris.Tests" />
+  </ItemGroup>
+
 </Project>
