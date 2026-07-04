@@ -8,7 +8,9 @@
         Title="Tetris"
         SizeToContent="WidthAndHeight"
         Background="#1E1E2E"
-        ResizeMode="CanMinimize">
+        ResizeMode="CanResize"
+        MinWidth="500"
+        MinHeight="500">
     <Window.Resources>
         <!-- 画面を激しく揺らす（断末魔のシェイク） -->
         <Storyboard x:Key="ShakeStoryboard">
@@ -63,6 +65,7 @@
         <KeyBinding Key="Return" Command="{Binding StartCommand}" />
         <KeyBinding Key="P"      Command="{Binding PauseCommand}" />
     </Window.InputBindings>
+    <Viewbox Stretch="Uniform">
     <Grid Margin="16" RenderTransformOrigin="0.5,0.5">
         <Grid.RenderTransform>
             <TranslateTransform x:Name="ShakeTransform" />
@@ -70,7 +73,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="16" />
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
         <!-- ゲーム盤面 -->
@@ -143,4 +146,5 @@
             </TextBlock>
         </StackPanel>
     </Grid>
+    </Viewbox>
 </Window>
