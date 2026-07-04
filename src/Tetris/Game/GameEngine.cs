@@ -156,13 +156,18 @@ public sealed class GameEngine
         LockPiece();
     }
 
-    public bool Rotate()
+    public bool Rotate() => TryRotate(piece => piece.Rotated());
+
+    /// <summary>反時計回りに回転を試みる（ウォールキックあり）。</summary>
+    public bool RotateCcw() => TryRotate(piece => piece.RotatedCcw());
+
+    private bool TryRotate(Func<Tetromino, Tetromino> rotate)
     {
         if (IsGameOver || Current is null)
         {
             return false;
         }
-        var rotated = Current.Rotated();
+        var rotated = rotate(Current);
         // 簡易ウォールキック: その場 → 右 → 左 → 上 の順に試す。
         foreach (int dx in new[] { 0, 1, -1, 2, -2 })
         {
