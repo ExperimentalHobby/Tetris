@@ -8,6 +8,9 @@ public sealed class GameEngine
     public const int Columns = 10;
     public const int Rows = 20;
 
+    /// <summary>NEXT 欄で先読み表示する個数。</summary>
+    public const int PreviewCount = 3;
+
     /// <summary>SRS準拠のウォールキックテーブル(JLSTZ用)。キーは(回転前状態,回転後状態)。値は5候補のオフセット(dx,dy)。
     /// 標準のSRSデータはY上方向を正として定義されるため、本エンジンのY下方向正の座標系に合わせて符号を反転済み。</summary>
     private static readonly Dictionary<(int From, int To), (int Dx, int Dy)[]> JlstzKicks = new()
@@ -48,6 +51,7 @@ public sealed class GameEngine
 
     private readonly Random _random = new();
     private readonly Queue<TetrominoType> _bag = new();
+    private readonly List<TetrominoType> _nextQueue = new();
     private readonly List<int> _pendingClear = new();
 
     /// <summary>直近の成功アクションが回転だったかどうか（T-Spin判定用）。移動成功でfalse、回転成功でtrueになる。</summary>
@@ -56,11 +60,25 @@ public sealed class GameEngine
     /// <summary>直近のロックで検出されたT-Spinの種別。LockPieceで設定し、CommitClear/LockPieceの加点時に消費する。</summary>
     private TSpinKind _pendingTSpinKind;
 
+    /// <summary>接地してから固定するまでの猶予時間。</summary>
+    private static readonly TimeSpan LockDelayDuration = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>ロックディレイをリセットできる最大回数（無限の設置回避のため）。</summary>
+    public const int MaxLockResets = 15;
+
+    private TimeSpan _lockDelayElapsed = TimeSpan.Zero;
+    private int _lockResetCount;
+
     /// <summary>固定済みブロックの色。null は空セル。</summary>
     public TetrominoType?[,] Grid { get; } = new TetrominoType?[Rows, Columns];
 
     public Tetromino? Current { get; private set; }
-    public TetrominoType NextType { get; private set; }
+
+    /// <summary>先読み表示用の次ピース列（先頭がすぐ次に出現する種）。</summary>
+    public IReadOnlyList<TetrominoType> NextQueue => _nextQueue;
+
+    /// <summary>次に出現するピース種（<see cref="NextQueue"/> の先頭と同じ）。</summary>
+    public TetrominoType NextType => _nextQueue[0];
 
     /// <summary>ホールド（保管）中のピース種。まだ何も保管していない場合は null。</summary>
     public TetrominoType? HeldType { get; private set; }
@@ -79,16 +97,35 @@ public sealed class GameEngine
     public int Level => Lines / 10 + 1;
     public bool IsGameOver { get; private set; }
 
+    /// <summary>連続してライン消去に成功した回数。消去を伴わない固定で 0 にリセットされる。</summary>
+    public int Combo { get; private set; }
+
+    /// <summary>直近の消去が Back-to-Back（連続テトリス等の難しい消去）だったかどうか。</summary>
+    public bool IsBackToBack { get; private set; }
+
+    private bool _lastClearWasDifficult;
+
     /// <summary>ピースが盤面に固定された直後に発火する（効果音などのトリガー用）。</summary>
     public event EventHandler? PieceLocked;
 
     /// <summary>現在のレベルに応じた 1 ステップの落下間隔。</summary>
     public TimeSpan DropInterval => TimeSpan.FromMilliseconds(Math.Max(80, 800 - (Level - 1) * 70));
 
+    /// <summary>現在のピースがこれ以上下に動けない（接地している）かどうか。</summary>
+    public bool IsGrounded => Current is not null && !CanMoveDown(Current);
+
+    private bool CanMoveDown(Tetromino piece)
+    {
+        var test = piece.Clone();
+        test.Y += 1;
+        return IsValid(test);
+    }
+
     public void Start()
     {
         Array.Clear(Grid, 0, Grid.Length);
         _bag.Clear();
+        _nextQueue.Clear();
         _pendingClear.Clear();
         Score = 0;
         Lines = 0;
@@ -97,7 +134,13 @@ public sealed class GameEngine
         CanHold = true;
         _lastActionWasRotation = false;
         _pendingTSpinKind = TSpinKind.None;
-        NextType = NextFromBag();
+        Combo = 0;
+        IsBackToBack = false;
+        _lastClearWasDifficult = false;
+        for (int i = 0; i < PreviewCount; i++)
+        {
+            _nextQueue.Add(NextFromBag());
+        }
         SpawnNext();
     }
 
@@ -117,8 +160,9 @@ public sealed class GameEngine
 
     private void SpawnNext()
     {
-        var type = NextType;
-        NextType = NextFromBag();
+        var type = _nextQueue[0];
+        _nextQueue.RemoveAt(0);
+        _nextQueue.Add(NextFromBag());
         SpawnPiece(type);
     }
 
@@ -139,6 +183,8 @@ public sealed class GameEngine
         }
         Current = piece;
         _lastActionWasRotation = false;
+        _lockDelayElapsed = TimeSpan.Zero;
+        _lockResetCount = 0;
     }
 
     /// <summary>
@@ -170,20 +216,31 @@ public sealed class GameEngine
     public bool MoveLeft() => TryMove(-1, 0);
     public bool MoveRight() => TryMove(1, 0);
 
-    /// <summary>1 段落下を試みる。着地したら固定処理を行う。</summary>
+    /// <summary>1 段落下を試みる。接地している場合はロックディレイ猶予中として何もしない。</summary>
     public void SoftDrop()
     {
         if (IsGameOver || Current is null)
         {
             return;
         }
-        if (!TryMove(0, 1))
-        {
-            LockPiece();
-        }
-        else
+        if (TryMove(0, 1))
         {
             Score += 1; // ソフトドロップのボーナス
+        }
+    }
+
+    /// <summary>接地からの経過時間を進める。ロックディレイを超えたら固定する。非接地なら経過時間をリセットする。</summary>
+    public void AdvanceLockDelay(TimeSpan elapsed)
+    {
+        if (IsGameOver || Current is null || !IsGrounded)
+        {
+            _lockDelayElapsed = TimeSpan.Zero;
+            return;
+        }
+        _lockDelayElapsed += elapsed;
+        if (_lockDelayElapsed >= LockDelayDuration)
+        {
+            LockPiece();
         }
     }
 
@@ -231,6 +288,7 @@ public sealed class GameEngine
             if (IsValid(test))
             {
                 Current = test;
+                OnSuccessfulAction();
                 _lastActionWasRotation = true;
                 return true;
             }
@@ -261,10 +319,27 @@ public sealed class GameEngine
         if (IsValid(test))
         {
             Current = test;
+            OnSuccessfulAction();
             _lastActionWasRotation = false;
             return true;
         }
         return false;
+    }
+
+    /// <summary>移動・回転が成功した際に呼ぶ。接地中ならロックディレイをリセットする（上限あり）。</summary>
+    private void OnSuccessfulAction()
+    {
+        if (!IsGrounded)
+        {
+            _lockDelayElapsed = TimeSpan.Zero;
+            _lockResetCount = 0;
+            return;
+        }
+        if (_lockResetCount < MaxLockResets)
+        {
+            _lockDelayElapsed = TimeSpan.Zero;
+            _lockResetCount++;
+        }
     }
 
     private bool IsValid(Tetromino piece)
@@ -332,6 +407,7 @@ public sealed class GameEngine
                 Score += 100 * Level;
             }
             _pendingTSpinKind = TSpinKind.None;
+            Combo = 0; // 消去を伴わない固定でコンボが途切れる。
             SpawnNext();
         }
     }
@@ -434,7 +510,18 @@ public sealed class GameEngine
             baseScore = table[cleared] * Level;
         }
 
-        Score += baseScore;
+        // コンボ: 消去が連続するほど加点（1回目はボーナスなし）。
+        Combo++;
+        int comboBonus = 50 * (Combo - 1) * Level;
+
+        // Back-to-Back: テトリス（4ライン同時消し）が連続すると基礎点の+50%を加算する。
+        bool isDifficult = cleared == 4;
+        bool isBackToBack = isDifficult && _lastClearWasDifficult;
+        int backToBackBonus = isBackToBack ? baseScore / 2 : 0;
+        IsBackToBack = isBackToBack;
+        _lastClearWasDifficult = isDifficult;
+
+        Score += baseScore + comboBonus + backToBackBonus;
         _pendingTSpinKind = TSpinKind.None;
 
         _pendingClear.Clear();
