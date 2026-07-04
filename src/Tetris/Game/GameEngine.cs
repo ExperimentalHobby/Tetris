@@ -11,10 +11,54 @@ public sealed class GameEngine
     /// <summary>NEXT 欄で先読み表示する個数。</summary>
     public const int PreviewCount = 3;
 
+    /// <summary>SRS準拠のウォールキックテーブル(JLSTZ用)。キーは(回転前状態,回転後状態)。値は5候補のオフセット(dx,dy)。
+    /// 標準のSRSデータはY上方向を正として定義されるため、本エンジンのY下方向正の座標系に合わせて符号を反転済み。</summary>
+    private static readonly Dictionary<(int From, int To), (int Dx, int Dy)[]> JlstzKicks = new()
+    {
+        [(0, 1)] = new[] { (0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2) },
+        [(1, 0)] = new[] { (0, 0), (1, 0), (1, 1), (0, -2), (1, -2) },
+        [(1, 2)] = new[] { (0, 0), (1, 0), (1, -1), (0, 2), (1, 2) },
+        [(2, 1)] = new[] { (0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2) },
+        [(2, 3)] = new[] { (0, 0), (1, 0), (1, 1), (0, -2), (1, -2) },
+        [(3, 2)] = new[] { (0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2) },
+        [(3, 0)] = new[] { (0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2) },
+        [(0, 3)] = new[] { (0, 0), (1, 0), (1, -1), (0, 2), (1, 2) },
+    };
+
+    /// <summary>SRS準拠のウォールキックテーブル(I用)。JLSTZ用より大きいオフセットを使う。</summary>
+    private static readonly Dictionary<(int From, int To), (int Dx, int Dy)[]> IKicks = new()
+    {
+        [(0, 1)] = new[] { (0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2) },
+        [(1, 0)] = new[] { (0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2) },
+        [(1, 2)] = new[] { (0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1) },
+        [(2, 1)] = new[] { (0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1) },
+        [(2, 3)] = new[] { (0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2) },
+        [(3, 2)] = new[] { (0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2) },
+        [(3, 0)] = new[] { (0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1) },
+        [(0, 3)] = new[] { (0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1) },
+    };
+
+    /// <summary>回転にキックが不要なピース(O)用の単一オフセット。</summary>
+    private static readonly (int Dx, int Dy)[] NoKick = new[] { (0, 0) };
+
+    /// <summary>T-Spinの種別。3コーナールールにより判定する（Mini/Fullの簡易判定）。</summary>
+    private enum TSpinKind
+    {
+        None,
+        Mini,
+        Full,
+    }
+
     private readonly Random _random = new();
     private readonly Queue<TetrominoType> _bag = new();
     private readonly List<TetrominoType> _nextQueue = new();
     private readonly List<int> _pendingClear = new();
+
+    /// <summary>直近の成功アクションが回転だったかどうか（T-Spin判定用）。移動成功でfalse、回転成功でtrueになる。</summary>
+    private bool _lastActionWasRotation;
+
+    /// <summary>直近のロックで検出されたT-Spinの種別。LockPieceで設定し、CommitClear/LockPieceの加点時に消費する。</summary>
+    private TSpinKind _pendingTSpinKind;
 
     /// <summary>接地してから固定するまでの猶予時間。</summary>
     private static readonly TimeSpan LockDelayDuration = TimeSpan.FromMilliseconds(500);
@@ -88,6 +132,8 @@ public sealed class GameEngine
         IsGameOver = false;
         HeldType = null;
         CanHold = true;
+        _lastActionWasRotation = false;
+        _pendingTSpinKind = TSpinKind.None;
         Combo = 0;
         IsBackToBack = false;
         _lastClearWasDifficult = false;
@@ -136,6 +182,7 @@ public sealed class GameEngine
             return;
         }
         Current = piece;
+        _lastActionWasRotation = false;
         _lockDelayElapsed = TimeSpan.Zero;
         _lockResetCount = 0;
     }
@@ -213,31 +260,51 @@ public sealed class GameEngine
         LockPiece();
     }
 
-    public bool Rotate() => TryRotate(piece => piece.Rotated());
+    public bool Rotate() => TryRotate(piece => piece.Rotated(), 1);
 
-    /// <summary>反時計回りに回転を試みる（ウォールキックあり）。</summary>
-    public bool RotateCcw() => TryRotate(piece => piece.RotatedCcw());
+    /// <summary>反時計回りに回転を試みる（SRS準拠のウォールキックあり）。</summary>
+    public bool RotateCcw() => TryRotate(piece => piece.RotatedCcw(), 3);
 
-    private bool TryRotate(Func<Tetromino, Tetromino> rotate)
+    /// <summary>
+    /// 回転を試みる。SRS準拠のウォールキックテーブルに従い、複数のオフセットを順に試す。
+    /// </summary>
+    /// <param name="rotate">回転後の姿勢を生成する関数。</param>
+    /// <param name="toStateOffset">回転前状態からの相対オフセット(時計回り=1, 反時計回り=3)。</param>
+    private bool TryRotate(Func<Tetromino, Tetromino> rotate, int toStateOffset)
     {
         if (IsGameOver || Current is null)
         {
             return false;
         }
+        int fromState = Current.RotationState;
+        int toState = (fromState + toStateOffset) % 4;
         var rotated = rotate(Current);
-        // 簡易ウォールキック: その場 → 右 → 左 → 上 の順に試す。
-        foreach (int dx in new[] { 0, 1, -1, 2, -2 })
+        var offsets = GetKickOffsets(Current.Type, fromState, toState);
+        foreach (var (dx, dy) in offsets)
         {
             var test = rotated.Clone();
             test.X += dx;
+            test.Y += dy;
             if (IsValid(test))
             {
                 Current = test;
                 OnSuccessfulAction();
+                _lastActionWasRotation = true;
                 return true;
             }
         }
         return false;
+    }
+
+    /// <summary>ピース種と回転前後の状態に応じたウォールキックのオフセット候補を返す。</summary>
+    private static (int Dx, int Dy)[] GetKickOffsets(TetrominoType type, int fromState, int toState)
+    {
+        if (type == TetrominoType.O)
+        {
+            return NoKick;
+        }
+        var table = type == TetrominoType.I ? IKicks : JlstzKicks;
+        return table[(fromState, toState)];
     }
 
     private bool TryMove(int dx, int dy)
@@ -253,6 +320,7 @@ public sealed class GameEngine
         {
             Current = test;
             OnSuccessfulAction();
+            _lastActionWasRotation = false;
             return true;
         }
         return false;
@@ -296,6 +364,7 @@ public sealed class GameEngine
         {
             return;
         }
+        _pendingTSpinKind = DetectTSpin(Current, _lastActionWasRotation);
         foreach (var (x, y) in Current.Blocks())
         {
             if (y >= 0 && y < Rows && x >= 0 && x < Columns)
@@ -328,9 +397,59 @@ public sealed class GameEngine
         // 消去待ちが無ければそのまま次のピースへ。あれば呼び出し側の CommitClear を待つ。
         if (_pendingClear.Count == 0)
         {
+            // ライン消去を伴わない T-Spin は固定点ボーナスをここで即加算する。
+            if (_pendingTSpinKind == TSpinKind.Full)
+            {
+                Score += 400 * Level;
+            }
+            else if (_pendingTSpinKind == TSpinKind.Mini)
+            {
+                Score += 100 * Level;
+            }
+            _pendingTSpinKind = TSpinKind.None;
             Combo = 0; // 消去を伴わない固定でコンボが途切れる。
             SpawnNext();
         }
+    }
+
+    /// <summary>
+    /// 3コーナールールに基づき T-Spin の種別を判定する（簡易版: SRSの「5番目のキック特例」は扱わない）。
+    /// 直前の成功アクションが回転でない、またはピース種が T でない場合は None。
+    /// </summary>
+    private TSpinKind DetectTSpin(Tetromino piece, bool lastActionWasRotation)
+    {
+        if (!lastActionWasRotation || piece.Type != TetrominoType.T)
+        {
+            return TSpinKind.None;
+        }
+
+        int centerX = piece.X + 1;
+        int centerY = piece.Y + 1;
+
+        bool IsOccupied(int x, int y) => x < 0 || x >= Columns || y < 0 || y >= Rows || Grid[y, x] is not null;
+
+        bool tl = IsOccupied(centerX - 1, centerY - 1);
+        bool tr = IsOccupied(centerX + 1, centerY - 1);
+        bool bl = IsOccupied(centerX - 1, centerY + 1);
+        bool br = IsOccupied(centerX + 1, centerY + 1);
+
+        // 尖端(point)方向の2隅を「前方」、その反対側を「後方」とする。
+        var (front1, front2, back1, back2) = piece.RotationState switch
+        {
+            0 => (tl, tr, bl, br), // 尖端: 上
+            1 => (tr, br, tl, bl), // 尖端: 右
+            2 => (bl, br, tl, tr), // 尖端: 下
+            _ => (tl, bl, tr, br), // 尖端: 左
+        };
+
+        int frontCount = (front1 ? 1 : 0) + (front2 ? 1 : 0);
+        int backCount = (back1 ? 1 : 0) + (back2 ? 1 : 0);
+
+        if (frontCount + backCount < 3)
+        {
+            return TSpinKind.None;
+        }
+        return frontCount == 2 ? TSpinKind.Full : TSpinKind.Mini;
     }
 
     /// <summary>保留中の満杯行を実際に消去し、下詰め・加点を行って次のピースを生成する。</summary>
@@ -371,9 +490,25 @@ public sealed class GameEngine
         }
 
         Lines += cleared;
-        // 消したライン数に応じた得点（レベル補正あり）。
-        int[] table = { 0, 100, 300, 500, 800 };
-        int baseScore = table[cleared] * Level;
+
+        int baseScore;
+        if (_pendingTSpinKind == TSpinKind.Full)
+        {
+            // T-Spin Full: 1/2/3 ライン消去（×Level）。
+            int[] tSpinFullTable = { 0, 800, 1200, 1600 };
+            baseScore = tSpinFullTable[cleared] * Level;
+        }
+        else if (_pendingTSpinKind == TSpinKind.Mini)
+        {
+            // T-Spin Mini はピースの性質上、通常 1 ラインまでしか消去できない。
+            baseScore = (cleared == 1 ? 200 : 800 * cleared) * Level;
+        }
+        else
+        {
+            // 消したライン数に応じた通常の得点（レベル補正あり）。
+            int[] table = { 0, 100, 300, 500, 800 };
+            baseScore = table[cleared] * Level;
+        }
 
         // コンボ: 消去が連続するほど加点（1回目はボーナスなし）。
         Combo++;
@@ -387,6 +522,7 @@ public sealed class GameEngine
         _lastClearWasDifficult = isDifficult;
 
         Score += baseScore + comboBonus + backToBackBonus;
+        _pendingTSpinKind = TSpinKind.None;
 
         _pendingClear.Clear();
         SpawnNext();
