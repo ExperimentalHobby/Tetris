@@ -135,6 +135,24 @@ public class GameEngineTests
     }
 
     /// <summary>
+    /// I ピースの回転で I 専用の大きいキック(dx=-2)が使われ、JLSTZ用テーブルと混同していないことを確認する。
+    /// パス条件: オフセット(0,0)は衝突で失敗し、I テーブル固有のオフセット(-2,0)で回転が成功して列5に来る。
+    /// </summary>
+    [Fact]
+    public void Rotate_IPiece_UsesIKickTable_NotJlstzTable()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.I) { X = 5, Y = 8 });
+        // オフセット(0,0)での縦棒（列7）をブロックする。JLSTZ用オフセット(-1,0)なら列6に来て回避できてしまうため、
+        // I 専用オフセット(-2,0)でのみ回避できる列7への衝突を用意する。
+        engine.Grid[10, 7] = TetrominoType.J;
+
+        Assert.True(engine.Rotate());
+
+        Assert.True(engine.Current!.Blocks().All(b => b.X == 5));
+    }
+
+    /// <summary>
     /// ゴースト位置が現在位置以下かつ盤面内に収まることを確認する。
     /// パス条件: GhostY が現在 Y 以上で、ゴースト最下セルが盤面の行数未満。
     /// </summary>
@@ -220,5 +238,101 @@ public class GameEngineTests
         Assert.Equal(4, engine.Lines);
         Assert.Equal(800, engine.Score);
         Assert.False(engine.IsClearing);
+    }
+
+    /// <summary>
+    /// 3隅(尖端側2隅とも)が埋まった状態で回転により設置・1ライン消去すると
+    /// Full T-Spin Single(800×Level)が加点されることを確認する。
+    /// パス条件: 回転成功後にロックし、1ライン消去確定でScore=800。
+    /// </summary>
+    [Fact]
+    public void TSpin_Full_ClearsOneLine_ScoresTSpinSingle()
+    {
+        var engine = StartedEngine();
+
+        // 最下行(19)を列5以外すべて埋める(Tの回転後の「下」セルが列5に来て1ライン完成)。
+        for (int x = 0; x < GameEngine.Columns; x++)
+        {
+            if (x != 5)
+            {
+                engine.Grid[GameEngine.Rows - 1, x] = TetrominoType.J;
+            }
+        }
+        // 行17の列4・列6のみ埋める(回転後の中心(5,18)の上2隅 TL/TR)。
+        engine.Grid[GameEngine.Rows - 3, 4] = TetrominoType.J;
+        engine.Grid[GameEngine.Rows - 3, 6] = TetrominoType.J;
+
+        // 回転前(spawn姿勢)のTピースをX=4,Y=17に配置し、その場回転(オフセット0,0)で
+        // 中心(5,18)・尖端側(右)の2隅(TR,BR)を含む4隅すべてが埋まった状態を作る。
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = GameEngine.Rows - 3 });
+        Assert.True(engine.Rotate());
+
+        engine.LockCurrentForTest();
+        Assert.True(engine.IsClearing);
+        Assert.Single(engine.PendingClearRows);
+
+        engine.CommitClear();
+
+        Assert.Equal(1, engine.Lines);
+        Assert.Equal(800, engine.Score);
+    }
+
+    /// <summary>
+    /// 3隅(尖端側1隅のみ)が埋まった状態で回転により設置・ライン消去なしの場合、
+    /// Mini T-Spinの固定ボーナス(100×Level)が即加算されることを確認する。
+    /// パス条件: ラインが完成しない配置でロック後、Score=100。
+    /// </summary>
+    [Fact]
+    public void TSpin_Mini_NoLines_AddsFlatBonus()
+    {
+        var engine = StartedEngine();
+
+        // 中心(5,10)の背面2隅(TL,BL)と、尖端側(右)の1隅(TR)のみ埋める。BR は空けておく。
+        engine.Grid[9, 4] = TetrominoType.J;  // TL
+        engine.Grid[9, 6] = TetrominoType.J;  // TR（尖端側）
+        engine.Grid[11, 4] = TetrominoType.J; // BL
+
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = 9 });
+        Assert.True(engine.Rotate());
+
+        engine.LockCurrentForTest();
+
+        Assert.False(engine.IsClearing);
+        Assert.Equal(100, engine.Score);
+    }
+
+    /// <summary>
+    /// 同じ3隅配置でも、回転を経ずに直接配置した場合は T-Spin と判定されず、
+    /// 通常のライン消去点のみになることを確認する。
+    /// パス条件: 回転せず直接1ライン消去すると Score が通常の 100(T-Spinなし)になる。
+    /// </summary>
+    [Fact]
+    public void TSpin_RequiresLastActionRotation_TranslationDoesNotCount()
+    {
+        var engine = StartedEngine();
+
+        for (int x = 0; x < GameEngine.Columns; x++)
+        {
+            if (x != 5)
+            {
+                engine.Grid[GameEngine.Rows - 1, x] = TetrominoType.J;
+            }
+        }
+        engine.Grid[GameEngine.Rows - 3, 4] = TetrominoType.J;
+        engine.Grid[GameEngine.Rows - 3, 6] = TetrominoType.J;
+
+        // 回転を経由せず、最終姿勢(state1)を直接配置する(移動のみで到達した扱い)。
+        var piece = new Tetromino(TetrominoType.T).Rotated();
+        piece.X = 4;
+        piece.Y = GameEngine.Rows - 3;
+        engine.SetCurrentForTest(piece);
+
+        engine.LockCurrentForTest();
+        Assert.True(engine.IsClearing);
+
+        engine.CommitClear();
+
+        Assert.Equal(1, engine.Lines);
+        Assert.Equal(100, engine.Score);
     }
 }

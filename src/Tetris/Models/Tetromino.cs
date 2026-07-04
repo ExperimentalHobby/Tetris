@@ -89,23 +89,28 @@ public sealed class Tetromino
 
     public int Size => Cells.GetLength(0);
 
+    /// <summary>回転姿勢(SRS準拠): 0=spawn, 1=R(時計回り1回), 2=180度, 3=L(反時計回り1回)。</summary>
+    public int RotationState { get; private set; }
+
     public Tetromino(TetrominoType type)
     {
         Type = type;
         var src = Shapes[type];
         Cells = (bool[,])src.Clone();
+        RotationState = 0;
     }
 
-    private Tetromino(TetrominoType type, bool[,] cells, int x, int y)
+    private Tetromino(TetrominoType type, bool[,] cells, int x, int y, int rotationState)
     {
         Type = type;
         Cells = cells;
         X = x;
         Y = y;
+        RotationState = rotationState;
     }
 
     /// <summary>現在の状態を複製する。</summary>
-    public Tetromino Clone() => new(Type, (bool[,])Cells.Clone(), X, Y);
+    public Tetromino Clone() => new(Type, (bool[,])Cells.Clone(), X, Y, RotationState);
 
     /// <summary>時計回りに 90 度回転させた新しいピースを返す。</summary>
     public Tetromino Rotated()
@@ -119,7 +124,7 @@ public sealed class Tetromino
                 rotated[x, n - 1 - y] = Cells[y, x];
             }
         }
-        return new Tetromino(Type, rotated, X, Y);
+        return new Tetromino(Type, rotated, X, Y, (RotationState + 1) % 4);
     }
 
     /// <summary>反時計回りに 90 度回転させた新しいピースを返す。</summary>
@@ -134,7 +139,7 @@ public sealed class Tetromino
                 rotated[n - 1 - x, y] = Cells[y, x];
             }
         }
-        return new Tetromino(Type, rotated, X, Y);
+        return new Tetromino(Type, rotated, X, Y, (RotationState + 3) % 4);
     }
 
     /// <summary>このピースが占有する盤面セルを列挙する（X=列, Y=行）。</summary>

@@ -50,6 +50,45 @@ public class TetrominoTests
     }
 
     /// <summary>
+    /// 時計回り回転で RotationState が 1 ずつ進み、4 回で 0 に戻ることを確認する。
+    /// パス条件: 0→1→2→3→0 の順に変化する。
+    /// </summary>
+    [Fact]
+    public void Rotated_UpdatesRotationState()
+    {
+        var piece = new Tetromino(TetrominoType.T);
+        Assert.Equal(0, piece.RotationState);
+
+        var r1 = piece.Rotated();
+        Assert.Equal(1, r1.RotationState);
+
+        var r2 = r1.Rotated();
+        Assert.Equal(2, r2.RotationState);
+
+        var r3 = r2.Rotated();
+        Assert.Equal(3, r3.RotationState);
+
+        var r4 = r3.Rotated();
+        Assert.Equal(0, r4.RotationState);
+    }
+
+    /// <summary>
+    /// 反時計回り回転で RotationState が 1 ずつ戻ることを確認する。
+    /// パス条件: 0→3→2→1→0 の順に変化する。
+    /// </summary>
+    [Fact]
+    public void RotatedCcw_UpdatesRotationState()
+    {
+        var piece = new Tetromino(TetrominoType.T);
+
+        var r1 = piece.RotatedCcw();
+        Assert.Equal(3, r1.RotationState);
+
+        var r2 = r1.RotatedCcw();
+        Assert.Equal(2, r2.RotationState);
+    }
+
+    /// <summary>
     /// T ピースが時計回り 90 度に正しく回転することを確認する。
     /// パス条件: 回転後の <c>Cells</c> が期待する時計回り姿勢と一致する。
     /// </summary>
