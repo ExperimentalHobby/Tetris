@@ -69,6 +69,62 @@ public class GameEngineTests
     }
 
     /// <summary>
+    /// 開始直後、最初のピースが出現済みのため PieceCount が 1 であることを確認する。
+    /// パス条件: <see cref="GameEngine.PieceCount"/> が 1。
+    /// </summary>
+    [Fact]
+    public void Start_PieceCount_IsOne()
+    {
+        var engine = StartedEngine();
+
+        Assert.Equal(1, engine.PieceCount);
+    }
+
+    /// <summary>
+    /// ピース固定で次のピースが出現すると PieceCount が増えることを確認する。
+    /// パス条件: ラインを完成させない固定の後、PieceCount が 2 になる。
+    /// </summary>
+    [Fact]
+    public void LockPiece_SpawningNextPiece_IncrementsPieceCount()
+    {
+        var engine = StartedEngine();
+        // スポーン位置(X=4,Y=0)と重ならない場所に固定し、次ピースが正常に出現できるようにする。
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = 10 });
+
+        engine.LockCurrentForTest();
+
+        Assert.Equal(2, engine.PieceCount);
+    }
+
+    /// <summary>
+    /// テトリスを決めると TetrisCount・TotalClearCount がともに 1 増えることを確認する。
+    /// パス条件: 4ライン同時消し確定後、TetrisCount==1・TotalClearCount==1。
+    /// </summary>
+    [Fact]
+    public void CommitClear_TetrisClear_IncrementsTetrisCountAndTotalClearCount()
+    {
+        var engine = StartedEngine();
+        ClearTetrisAtBottom(engine);
+
+        Assert.Equal(1, engine.TetrisCount);
+        Assert.Equal(1, engine.TotalClearCount);
+    }
+
+    /// <summary>
+    /// 通常消去1回・テトリス1回の後、TetrisRate が 50(%) になることを確認する。
+    /// パス条件: TotalClearCount==2 のうち TetrisCount==1 なので 50.0。
+    /// </summary>
+    [Fact]
+    public void TetrisRate_ComputesPercentageOfTetrisClears()
+    {
+        var engine = StartedEngine();
+        ClearSingleLineAtBottom(engine);
+        ClearTetrisAtBottom(engine);
+
+        Assert.Equal(50.0, engine.TetrisRate);
+    }
+
+    /// <summary>
     /// レベル 1 の落下間隔が 800ms であることを確認する。
     /// パス条件: <see cref="GameEngine.DropInterval"/> が 800ms。
     /// </summary>
