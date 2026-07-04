@@ -9,6 +9,17 @@ namespace Tetris.Services;
 public sealed class SoundEffectService
 {
     private readonly string _dir;
+    private double _volume = 1.0;
+
+    /// <summary>再生音量（0.0〜1.0）。範囲外の値は自動的にクランプされる。</summary>
+    public double Volume
+    {
+        get => _volume;
+        set => _volume = Math.Clamp(value, 0.0, 1.0);
+    }
+
+    /// <summary>ミュート中かどうか。true の間は <see cref="Volume"/> に関わらず無音になる。</summary>
+    public bool IsMuted { get; set; }
 
     /// <summary>既定の音声フォルダ（実行ファイルと同階層の Sounds/）でインスタンスを生成する。</summary>
     public SoundEffectService()
@@ -46,7 +57,10 @@ public sealed class SoundEffectService
         }
         try
         {
-            var player = new MediaPlayer();
+            var player = new MediaPlayer
+            {
+                Volume = IsMuted ? 0.0 : Volume,
+            };
             // 再生終了後に自動でリソースを解放する。
             player.MediaEnded += (s, _) => ((MediaPlayer)s!).Close();
             player.Open(new Uri(path, UriKind.Absolute));
