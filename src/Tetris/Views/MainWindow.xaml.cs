@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
@@ -47,7 +48,42 @@ public partial class MainWindow : Window
         _viewModel.NewRecord += OnNewRecord;
         _buryTimer.Tick += OnBuryTick;
         _lineClearTimer.Tick += OnLineClearFinished;
+        PreviewKeyDown += OnPreviewKeyDown;
+        PreviewKeyUp += OnPreviewKeyUp;
         Render();
+    }
+
+    /// <summary>
+    /// 左右移動キーは DAS/ARR による自前リピートで制御するため、OS のキーリピート（IsRepeat）は無視する。
+    /// </summary>
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.IsRepeat)
+        {
+            return;
+        }
+        switch (e.Key)
+        {
+            case Key.Left:
+                _viewModel.MoveLeftKeyDown();
+                break;
+            case Key.Right:
+                _viewModel.MoveRightKeyDown();
+                break;
+        }
+    }
+
+    private void OnPreviewKeyUp(object sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Left:
+                _viewModel.MoveLeftKeyUp();
+                break;
+            case Key.Right:
+                _viewModel.MoveRightKeyUp();
+                break;
+        }
     }
 
     private void OnLinesClearing(object? sender, LinesClearingEventArgs e)
