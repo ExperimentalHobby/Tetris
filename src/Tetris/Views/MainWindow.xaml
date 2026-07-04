@@ -64,6 +64,7 @@
         <KeyBinding Key="C"      Command="{Binding HoldCommand}" />
         <KeyBinding Key="Return" Command="{Binding StartCommand}" />
         <KeyBinding Key="P"      Command="{Binding PauseCommand}" />
+        <KeyBinding Key="M"      Command="{Binding ToggleMuteCommand}" />
     </Window.InputBindings>
     <Viewbox Stretch="Uniform">
     <Grid Margin="16" RenderTransformOrigin="0.5,0.5">
@@ -130,6 +131,14 @@
             <TextBlock Text="LEVEL" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
             <TextBlock Text="{Binding Level}" Foreground="#F9E2AF" FontSize="24" FontWeight="Bold" />
 
+            <TextBlock Text="VOLUME" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
+            <StackPanel Orientation="Horizontal">
+                <Slider Width="90" Minimum="0" Maximum="1" Value="{Binding Volume}"
+                        VerticalAlignment="Center" />
+                <CheckBox Content="Mute" Foreground="#CDD6F4" Margin="8,0,0,0"
+                          IsChecked="{Binding IsMuted}" VerticalAlignment="Center" />
+            </StackPanel>
+
             <TextBlock Text="{Binding Status}"
                        Foreground="#F38BA8" FontSize="16" FontWeight="Bold"
                        TextWrapping="Wrap" Margin="0,24,0,0" />
@@ -142,7 +151,8 @@
                 <Run Text="Space : ハードドロップ" /><LineBreak />
                 <Run Text="C : ホールド" /><LineBreak />
                 <Run Text="Enter : 開始 / リスタート" /><LineBreak />
-                <Run Text="P : 一時停止" />
+                <Run Text="P : 一時停止" /><LineBreak />
+                <Run Text="M : ミュート切替" />
             </TextBlock>
         </StackPanel>
     </Grid>
