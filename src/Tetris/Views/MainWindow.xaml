@@ -102,6 +102,18 @@
                         <TextBlock Text="Enter で再開"
                                    Foreground="#CDD6F4" FontSize="16"
                                    HorizontalAlignment="Center" Margin="0,16,0,0" />
+
+                        <StackPanel Margin="0,20,0,0" HorizontalAlignment="Center">
+                            <TextBlock Foreground="#BAC2DE" FontSize="14" HorizontalAlignment="Center">
+                                <Run Text="TIME " /><Run Text="{Binding PlayTime, Mode=OneWay, StringFormat={}{0:mm\\:ss}}" />
+                            </TextBlock>
+                            <TextBlock Foreground="#BAC2DE" FontSize="14" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                <Run Text="PIECES " /><Run Text="{Binding PieceCount, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Foreground="#BAC2DE" FontSize="14" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                <Run Text="TETRIS RATE " /><Run Text="{Binding TetrisRate, Mode=OneWay, StringFormat={}{0:F1}}" /><Run Text="%" />
+                            </TextBlock>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>

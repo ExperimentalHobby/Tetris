@@ -74,6 +74,18 @@ public sealed class GameEngine
 
     public Tetromino? Current { get; private set; }
 
+    /// <summary>出現したピースの総数（統計表示用）。</summary>
+    public int PieceCount { get; private set; }
+
+    /// <summary>テトリス（4ライン同時消し）を決めた回数（統計表示用）。</summary>
+    public int TetrisCount { get; private set; }
+
+    /// <summary>ライン消去を伴った固定の総回数（統計表示用）。</summary>
+    public int TotalClearCount { get; private set; }
+
+    /// <summary>ライン消去のうちテトリスだった割合(%)。消去実績が無ければ 0。</summary>
+    public double TetrisRate => TotalClearCount == 0 ? 0 : (double)TetrisCount / TotalClearCount * 100;
+
     /// <summary>先読み表示用の次ピース列（先頭がすぐ次に出現する種）。</summary>
     public IReadOnlyList<TetrominoType> NextQueue => _nextQueue;
 
@@ -137,6 +149,9 @@ public sealed class GameEngine
         Combo = 0;
         IsBackToBack = false;
         _lastClearWasDifficult = false;
+        PieceCount = 0;
+        TetrisCount = 0;
+        TotalClearCount = 0;
         for (int i = 0; i < PreviewCount; i++)
         {
             _nextQueue.Add(NextFromBag());
@@ -182,6 +197,7 @@ public sealed class GameEngine
             return;
         }
         Current = piece;
+        PieceCount++;
         _lastActionWasRotation = false;
         _lockDelayElapsed = TimeSpan.Zero;
         _lockResetCount = 0;
@@ -490,6 +506,11 @@ public sealed class GameEngine
         }
 
         Lines += cleared;
+        TotalClearCount++;
+        if (cleared == 4)
+        {
+            TetrisCount++;
+        }
 
         int baseScore;
         if (_pendingTSpinKind == TSpinKind.Full)

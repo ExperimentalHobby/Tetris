@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows.Threading;
 using Tetris.Input;
 using Tetris.Services;
@@ -17,6 +18,7 @@ public sealed class GameViewModel : ObservableObject
     private readonly AutoRepeatController _rightRepeat = new();
     private readonly HighScoreService _highScoreService = new();
     private readonly SoundEffectService _soundService = new();
+    private readonly Stopwatch _playStopwatch = new();
 
     private bool _isStarted;
     private bool _isPaused;
@@ -27,6 +29,9 @@ public sealed class GameViewModel : ObservableObject
     private int _level = 1;
     private int _highScore;
     private string _status = "Enter で開始";
+    private TimeSpan _playTime;
+    private int _pieceCount;
+    private double _tetrisRate;
 
     public GameViewModel()
     {
@@ -70,6 +75,15 @@ public sealed class GameViewModel : ObservableObject
     public int Level { get => _level; private set => SetProperty(ref _level, value); }
     public int HighScore { get => _highScore; private set => SetProperty(ref _highScore, value); }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
+
+    /// <summary>ゲームオーバー時点のプレイ時間（統計表示用）。</summary>
+    public TimeSpan PlayTime { get => _playTime; private set => SetProperty(ref _playTime, value); }
+
+    /// <summary>ゲームオーバー時点の出現ピース総数（統計表示用）。</summary>
+    public int PieceCount { get => _pieceCount; private set => SetProperty(ref _pieceCount, value); }
+
+    /// <summary>ゲームオーバー時点のテトリス率(%)（統計表示用）。</summary>
+    public double TetrisRate { get => _tetrisRate; private set => SetProperty(ref _tetrisRate, value); }
 
     /// <summary>効果音の再生音量（0.0〜1.0）。</summary>
     public double Volume
@@ -118,6 +132,7 @@ public sealed class GameViewModel : ObservableObject
         _isStarted = true;
         _isPaused = false;
         _gameOverNotified = false;
+        _playStopwatch.Restart();
         _leftRepeat.KeyUp();
         _rightRepeat.KeyUp();
         _timer.Interval = _engine.DropInterval;
@@ -314,6 +329,10 @@ public sealed class GameViewModel : ObservableObject
             {
                 _gameOverNotified = true;
                 justEnded = true;
+                _playStopwatch.Stop();
+                PlayTime = _playStopwatch.Elapsed;
+                PieceCount = _engine.PieceCount;
+                TetrisRate = _engine.TetrisRate;
                 _soundService.PlayGameOver();
                 if (_engine.Score > _highScore)
                 {
