@@ -16,6 +16,41 @@ public class GameEngineTests
         return engine;
     }
 
+    /// <summary>最下行を 1 ライン分だけ完成させて確定するヘルパー（コンボ・B2B テスト用）。</summary>
+    private static void ClearSingleLineAtBottom(GameEngine engine)
+    {
+        int row = GameEngine.Rows - 1;
+        for (int x = 2; x < GameEngine.Columns; x++)
+        {
+            engine.Grid[row, x] = TetrominoType.I;
+        }
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = row - 1 });
+        engine.LockCurrentForTest();
+        engine.CommitClear();
+    }
+
+    /// <summary>最下 4 行をテトリス(4ライン同時消し)で完成させて確定するヘルパー（コンボ・B2B テスト用）。</summary>
+    private static void ClearTetrisAtBottom(GameEngine engine)
+    {
+        for (int row = GameEngine.Rows - 4; row < GameEngine.Rows; row++)
+        {
+            for (int x = 1; x < GameEngine.Columns; x++)
+            {
+                engine.Grid[row, x] = TetrominoType.J;
+            }
+        }
+
+        var verticalI = new Tetromino(TetrominoType.I).Rotated();
+        var cells = verticalI.Blocks().ToList();
+        int localColumn = cells[0].X;
+        int minLocalRow = cells.Min(c => c.Y);
+        verticalI.X = -localColumn;
+        verticalI.Y = (GameEngine.Rows - 4) - minLocalRow;
+        engine.SetCurrentForTest(verticalI);
+        engine.LockCurrentForTest();
+        engine.CommitClear();
+    }
+
     /// <summary>
     /// 開始直後の状態が初期化されていることを確認する。
     /// パス条件: スコア/ライン 0、レベル 1、ゲームオーバー・消去中でなく、落下ピースが存在する。
@@ -220,5 +255,100 @@ public class GameEngineTests
         Assert.Equal(4, engine.Lines);
         Assert.Equal(800, engine.Score);
         Assert.False(engine.IsClearing);
+    }
+
+    /// <summary>
+    /// 単発のライン消去では Combo が 1 になり、コンボボーナスは加算されないことを確認する。
+    /// パス条件: 1 回消去後、Combo == 1 かつ Score == 100 * Level（ボーナスなし）。
+    /// </summary>
+    [Fact]
+    public void CommitClear_SingleClear_ComboBecomesOneWithNoBonus()
+    {
+        var engine = StartedEngine();
+
+        ClearSingleLineAtBottom(engine);
+
+        Assert.Equal(1, engine.Combo);
+        Assert.Equal(100 * engine.Level, engine.Score);
+    }
+
+    /// <summary>
+    /// 消去を伴う固定が連続すると Combo が増え、2 回目の消去にコンボボーナスが加算されることを確認する。
+    /// パス条件: 2 回連続消去後、Combo == 2 かつ増加分に 50*(Combo-1)*Level のボーナスが含まれる。
+    /// </summary>
+    [Fact]
+    public void CommitClear_ConsecutiveClears_ComboIncrementsAndAddsBonus()
+    {
+        var engine = StartedEngine();
+
+        ClearSingleLineAtBottom(engine);
+        Assert.Equal(1, engine.Combo);
+        int scoreAfterFirst = engine.Score;
+
+        ClearSingleLineAtBottom(engine);
+
+        Assert.Equal(2, engine.Combo);
+        int comboBonus = 50 * (engine.Combo - 1) * engine.Level;
+        int expectedIncrement = 100 * engine.Level + comboBonus;
+        Assert.Equal(scoreAfterFirst + expectedIncrement, engine.Score);
+    }
+
+    /// <summary>
+    /// ライン消去を伴わない固定が起きると Combo が 0 にリセットされることを確認する。
+    /// パス条件: コンボ成立後、消去のない固定で Combo が 0 に戻る。
+    /// </summary>
+    [Fact]
+    public void LockPiece_WithoutClearingLines_ResetsComboToZero()
+    {
+        var engine = StartedEngine();
+        ClearSingleLineAtBottom(engine);
+        Assert.Equal(1, engine.Combo);
+
+        // ラインを完成させない位置にピースを固定する。
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
+        engine.LockCurrentForTest();
+
+        Assert.Equal(0, engine.Combo);
+    }
+
+    /// <summary>
+    /// テトリスに続けてテトリスを決めると Back-to-Back ボーナスが加算されることを確認する。
+    /// パス条件: 2 回目のテトリスで IsBackToBack == true になり、基礎点の +50% が加算される。
+    /// </summary>
+    [Fact]
+    public void CommitClear_TetrisFollowedByTetris_AddsBackToBackBonus()
+    {
+        var engine = StartedEngine();
+
+        ClearTetrisAtBottom(engine);
+        Assert.False(engine.IsBackToBack);
+        int scoreAfterFirst = engine.Score;
+
+        ClearTetrisAtBottom(engine);
+
+        Assert.True(engine.IsBackToBack);
+        int baseScore = 800 * engine.Level;
+        int comboBonus = 50 * (engine.Combo - 1) * engine.Level;
+        int expectedIncrement = baseScore + comboBonus + baseScore / 2;
+        Assert.Equal(scoreAfterFirst + expectedIncrement, engine.Score);
+    }
+
+    /// <summary>
+    /// テトリスの間に易しい消去が挟まると Back-to-Back ストリークが途切れることを確認する。
+    /// パス条件: テトリス→1ライン消去→テトリスの順で、3 回目のテトリスの IsBackToBack が false。
+    /// </summary>
+    [Fact]
+    public void CommitClear_EasyClearBreaksBackToBack()
+    {
+        var engine = StartedEngine();
+
+        ClearTetrisAtBottom(engine);
+        Assert.False(engine.IsBackToBack);
+
+        ClearSingleLineAtBottom(engine);
+        Assert.False(engine.IsBackToBack);
+
+        ClearTetrisAtBottom(engine);
+        Assert.False(engine.IsBackToBack);
     }
 }

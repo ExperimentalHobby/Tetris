@@ -35,6 +35,14 @@ public sealed class GameEngine
     public int Level => Lines / 10 + 1;
     public bool IsGameOver { get; private set; }
 
+    /// <summary>連続してライン消去に成功した回数。消去を伴わない固定で 0 にリセットされる。</summary>
+    public int Combo { get; private set; }
+
+    /// <summary>直近の消去が Back-to-Back（連続テトリス等の難しい消去）だったかどうか。</summary>
+    public bool IsBackToBack { get; private set; }
+
+    private bool _lastClearWasDifficult;
+
     /// <summary>ピースが盤面に固定された直後に発火する（効果音などのトリガー用）。</summary>
     public event EventHandler? PieceLocked;
 
@@ -51,6 +59,9 @@ public sealed class GameEngine
         IsGameOver = false;
         HeldType = null;
         CanHold = true;
+        Combo = 0;
+        IsBackToBack = false;
+        _lastClearWasDifficult = false;
         NextType = NextFromBag();
         SpawnNext();
     }
@@ -253,6 +264,7 @@ public sealed class GameEngine
         // 消去待ちが無ければそのまま次のピースへ。あれば呼び出し側の CommitClear を待つ。
         if (_pendingClear.Count == 0)
         {
+            Combo = 0; // 消去を伴わない固定でコンボが途切れる。
             SpawnNext();
         }
     }
@@ -297,7 +309,20 @@ public sealed class GameEngine
         Lines += cleared;
         // 消したライン数に応じた得点（レベル補正あり）。
         int[] table = { 0, 100, 300, 500, 800 };
-        Score += table[cleared] * Level;
+        int baseScore = table[cleared] * Level;
+
+        // コンボ: 消去が連続するほど加点（1回目はボーナスなし）。
+        Combo++;
+        int comboBonus = 50 * (Combo - 1) * Level;
+
+        // Back-to-Back: テトリス（4ライン同時消し）が連続すると基礎点の+50%を加算する。
+        bool isDifficult = cleared == 4;
+        bool isBackToBack = isDifficult && _lastClearWasDifficult;
+        int backToBackBonus = isBackToBack ? baseScore / 2 : 0;
+        IsBackToBack = isBackToBack;
+        _lastClearWasDifficult = isDifficult;
+
+        Score += baseScore + comboBonus + backToBackBonus;
 
         _pendingClear.Clear();
         SpawnNext();
