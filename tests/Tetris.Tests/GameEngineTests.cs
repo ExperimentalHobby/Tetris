@@ -131,6 +131,104 @@ public class GameEngineTests
     }
 
     /// <summary>
+    /// 接地位置で SoftDrop しても即座には固定されないことを確認する（ロックディレイ）。
+    /// パス条件: 接地させて SoftDrop() を呼んでも Grid には反映されず、Current が残る。
+    /// </summary>
+    [Fact]
+    public void SoftDrop_WhenGrounded_DoesNotLockImmediately()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
+
+        engine.SoftDrop();
+
+        Assert.NotNull(engine.Current);
+        Assert.Null(engine.Grid[GameEngine.Rows - 1, 4]);
+    }
+
+    /// <summary>
+    /// ロックディレイが経過する前は固定されないことを確認する。
+    /// パス条件: 500ms 未満の経過時間を渡しても Grid に反映されない。
+    /// </summary>
+    [Fact]
+    public void AdvanceLockDelay_BeforeDelayElapsed_DoesNotLock()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
+
+        engine.AdvanceLockDelay(TimeSpan.FromMilliseconds(400));
+
+        Assert.Null(engine.Grid[GameEngine.Rows - 1, 4]);
+    }
+
+    /// <summary>
+    /// ロックディレイが経過すると固定されることを確認する。
+    /// パス条件: 500ms 分の経過時間を渡すと Grid にピースが反映される。
+    /// </summary>
+    [Fact]
+    public void AdvanceLockDelay_WhileGrounded_LocksAfterDelay()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
+
+        engine.AdvanceLockDelay(TimeSpan.FromMilliseconds(500));
+
+        Assert.Equal(TetrominoType.O, engine.Grid[GameEngine.Rows - 1, 4]);
+    }
+
+    /// <summary>
+    /// 接地していない間はロックディレイの経過時間が積算されないことを確認する。
+    /// パス条件: 出現直後（非接地）に十分長い経過時間を渡しても固定されない。
+    /// </summary>
+    [Fact]
+    public void AdvanceLockDelay_WhileNotGrounded_DoesNotAccumulate()
+    {
+        var engine = StartedEngine();
+
+        engine.AdvanceLockDelay(TimeSpan.FromSeconds(10));
+
+        Assert.NotNull(engine.Current);
+    }
+
+    /// <summary>
+    /// 接地中に横移動するとロックディレイがリセットされ、合算しても固定されないことを確認する。
+    /// パス条件: 400ms 経過後に横移動でリセットし、さらに 400ms 経過しても固定されない（合計800ms相当だが未固定）。
+    /// </summary>
+    [Fact]
+    public void MoveLeft_WhileGrounded_ResetsLockDelay()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
+
+        engine.AdvanceLockDelay(TimeSpan.FromMilliseconds(400));
+        Assert.True(engine.MoveLeft());
+        engine.AdvanceLockDelay(TimeSpan.FromMilliseconds(400));
+
+        Assert.Null(engine.Grid[GameEngine.Rows - 1, 3]);
+        Assert.NotNull(engine.Current);
+    }
+
+    /// <summary>
+    /// ロックディレイのリセット回数上限を超えると、移動を続けても最終的に固定されることを確認する。
+    /// パス条件: 上限（<see cref="GameEngine.MaxLockResets"/>）を超えて左右移動を繰り返すと Grid に反映される。
+    /// </summary>
+    [Fact]
+    public void LockDelay_MaxResetsExceeded_LocksDespiteContinuedMovement()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
+
+        for (int i = 0; i < GameEngine.MaxLockResets + 5; i++)
+        {
+            engine.MoveRight();
+            engine.MoveLeft();
+            engine.AdvanceLockDelay(TimeSpan.FromMilliseconds(100));
+        }
+
+        Assert.Equal(TetrominoType.O, engine.Grid[GameEngine.Rows - 1, 4]);
+    }
+
+    /// <summary>
     /// 通常の空間で反時計回転が成功し、形状が変化することを確認する。
     /// パス条件: <see cref="GameEngine.RotateCcw"/> が true を返し、Current の Cells が回転前と異なる。
     /// </summary>
@@ -167,6 +265,76 @@ public class GameEngineTests
 
         // 回転後も盤面内に収まっている。
         Assert.True(engine.Current!.Blocks().All(b => b.X >= 0 && b.X < GameEngine.Columns));
+    }
+
+    /// <summary>
+    /// 開始直後、NextQueue の要素数が PreviewCount(3) であることを確認する。
+    /// パス条件: <see cref="GameEngine.NextQueue"/> の Count が 3。
+    /// </summary>
+    [Fact]
+    public void Start_NextQueue_HasThreePreviewItems()
+    {
+        var engine = StartedEngine();
+
+        Assert.Equal(3, engine.NextQueue.Count);
+    }
+
+    /// <summary>
+    /// NextQueue の先頭が NextType と一致することを確認する。
+    /// パス条件: <see cref="GameEngine.NextQueue"/>[0] が <see cref="GameEngine.NextType"/> と等しい。
+    /// </summary>
+    [Fact]
+    public void NextQueue_FirstItem_MatchesNextType()
+    {
+        var engine = StartedEngine();
+
+        Assert.Equal(engine.NextType, engine.NextQueue[0]);
+    }
+
+    /// <summary>
+    /// ピース確定後も NextQueue は 3 件を維持し、繰り上がりが正しいことを確認する。
+    /// パス条件: 固定前の NextQueue[1] が、固定後の新しい NextType(=NextQueue[0]) と一致する。
+    /// </summary>
+    [Fact]
+    public void SpawnNext_ConsumesQueueFrontAndRefillsTail()
+    {
+        var engine = StartedEngine();
+        var expectedNewNext = engine.NextQueue[1];
+
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = GameEngine.Rows - 2 });
+        engine.LockCurrentForTest();
+
+        Assert.Equal(3, engine.NextQueue.Count);
+        Assert.Equal(expectedNewNext, engine.NextType);
+    }
+
+    /// <summary>
+    /// NextQueue 越しに複数個取り出しても 7-bag の制約(1巡に全種1回ずつ)が壊れないことを確認する。
+    /// パス条件: 21 回分ピースを進めると、各種がちょうど 3 回ずつ出現する。
+    /// </summary>
+    [Fact]
+    public void NextQueue_Maintains7BagFairnessAcrossManySpawns()
+    {
+        var engine = StartedEngine();
+        var counts = new Dictionary<TetrominoType, int>();
+
+        void Count(TetrominoType type)
+        {
+            counts[type] = counts.GetValueOrDefault(type) + 1;
+        }
+
+        Count(engine.Current!.Type);
+        for (int i = 0; i < 20; i++)
+        {
+            engine.SetCurrentForTest(new Tetromino(engine.Current!.Type) { X = 0, Y = GameEngine.Rows - 2 });
+            engine.LockCurrentForTest();
+            Count(engine.Current!.Type);
+        }
+
+        foreach (TetrominoType type in Enum.GetValues<TetrominoType>())
+        {
+            Assert.Equal(3, counts[type]);
+        }
     }
 
     /// <summary>

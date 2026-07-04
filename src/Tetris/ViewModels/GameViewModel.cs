@@ -1,4 +1,5 @@
 using System.Windows.Threading;
+using Tetris.Input;
 using Tetris.Services;
 
 namespace Tetris.ViewModels;
@@ -11,6 +12,9 @@ public sealed class GameViewModel : ObservableObject
 {
     private readonly GameEngine _engine = new();
     private readonly DispatcherTimer _timer = new();
+    private readonly DispatcherTimer _inputTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private readonly AutoRepeatController _leftRepeat = new();
+    private readonly AutoRepeatController _rightRepeat = new();
     private readonly HighScoreService _highScoreService = new();
     private readonly SoundEffectService _soundService = new();
 
@@ -29,6 +33,7 @@ public sealed class GameViewModel : ObservableObject
         _highScore = _highScoreService.Load();
         _engine.PieceLocked += (_, _) => _soundService.PlayLock();
         _timer.Tick += OnTick;
+        _inputTimer.Tick += OnInputTick;
 
         StartCommand = new RelayCommand(Start);
         MoveLeftCommand = new RelayCommand(MoveLeft, CanPlay);
@@ -83,8 +88,11 @@ public sealed class GameViewModel : ObservableObject
         _isStarted = true;
         _isPaused = false;
         _gameOverNotified = false;
+        _leftRepeat.KeyUp();
+        _rightRepeat.KeyUp();
         _timer.Interval = _engine.DropInterval;
         _timer.Start();
+        _inputTimer.Start();
         Status = string.Empty;
         GameStarted?.Invoke(this, EventArgs.Empty);
         AfterChange();
@@ -96,9 +104,60 @@ public sealed class GameViewModel : ObservableObject
         {
             return;
         }
+        var interval = _timer.Interval;
         _engine.SoftDrop();
+        _engine.AdvanceLockDelay(interval);
         _timer.Interval = _engine.DropInterval;
         AfterChange();
+    }
+
+    /// <summary>左右移動キーが押された/離されたことを通知する（DAS/ARR による自前リピートのため）。</summary>
+    public void MoveLeftKeyDown()
+    {
+        if (!CanPlay())
+        {
+            return;
+        }
+        _leftRepeat.KeyDown();
+        MoveLeft();
+    }
+
+    public void MoveLeftKeyUp() => _leftRepeat.KeyUp();
+
+    public void MoveRightKeyDown()
+    {
+        if (!CanPlay())
+        {
+            return;
+        }
+        _rightRepeat.KeyDown();
+        MoveRight();
+    }
+
+    public void MoveRightKeyUp() => _rightRepeat.KeyUp();
+
+    /// <summary>DAS/ARR の経過を進め、リピート分の左右移動を行う専用タイマーの Tick。</summary>
+    private void OnInputTick(object? sender, EventArgs e)
+    {
+        if (_isPaused || _engine.IsGameOver || _engine.IsClearing)
+        {
+            return;
+        }
+        var interval = _inputTimer.Interval;
+        int leftRepeats = _leftRepeat.Advance(interval);
+        for (int i = 0; i < leftRepeats; i++)
+        {
+            _engine.MoveLeft();
+        }
+        int rightRepeats = _rightRepeat.Advance(interval);
+        for (int i = 0; i < rightRepeats; i++)
+        {
+            _engine.MoveRight();
+        }
+        if (leftRepeats > 0 || rightRepeats > 0)
+        {
+            AfterChange();
+        }
     }
 
     /// <summary>消去アニメーション完了後に View から呼ばれ、実際の消去・下詰めを確定する。</summary>
@@ -113,6 +172,7 @@ public sealed class GameViewModel : ObservableObject
         {
             _timer.Interval = _engine.DropInterval;
             _timer.Start();
+            _inputTimer.Start();
         }
         AfterChange();
     }
@@ -177,11 +237,15 @@ public sealed class GameViewModel : ObservableObject
         if (_isPaused)
         {
             _timer.Stop();
+            _inputTimer.Stop();
+            _leftRepeat.KeyUp();
+            _rightRepeat.KeyUp();
             Status = "PAUSED";
         }
         else
         {
             _timer.Start();
+            _inputTimer.Start();
             Status = string.Empty;
         }
     }
@@ -197,6 +261,7 @@ public sealed class GameViewModel : ObservableObject
         if (_engine.IsClearing)
         {
             _timer.Stop();
+            _inputTimer.Stop();
             StateChanged?.Invoke(this, EventArgs.Empty); // 満杯のままの盤面を描画
             if (_engine.PendingClearRows.Count >= 4)
                 _soundService.PlayTetris();
@@ -211,6 +276,7 @@ public sealed class GameViewModel : ObservableObject
         if (_engine.IsGameOver)
         {
             _timer.Stop();
+            _inputTimer.Stop();
             Status = "GAME OVER\nEnter で再開";
             if (!_gameOverNotified)
             {
