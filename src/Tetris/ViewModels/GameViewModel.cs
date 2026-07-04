@@ -34,6 +34,7 @@ public sealed class GameViewModel : ObservableObject
         MoveLeftCommand = new RelayCommand(MoveLeft, CanPlay);
         MoveRightCommand = new RelayCommand(MoveRight, CanPlay);
         RotateCommand = new RelayCommand(Rotate, CanPlay);
+        RotateCcwCommand = new RelayCommand(RotateCcw, CanPlay);
         SoftDropCommand = new RelayCommand(SoftDrop, CanPlay);
         HardDropCommand = new RelayCommand(HardDrop, CanPlay);
         HoldCommand = new RelayCommand(Hold, CanPlay);
@@ -68,6 +69,7 @@ public sealed class GameViewModel : ObservableObject
     public RelayCommand MoveLeftCommand { get; }
     public RelayCommand MoveRightCommand { get; }
     public RelayCommand RotateCommand { get; }
+    public RelayCommand RotateCcwCommand { get; }
     public RelayCommand SoftDropCommand { get; }
     public RelayCommand HardDropCommand { get; }
     public RelayCommand HoldCommand { get; }
@@ -130,6 +132,15 @@ public sealed class GameViewModel : ObservableObject
     private void Rotate()
     {
         if (_engine.Rotate())
+        {
+            _soundService.PlayRotate();
+        }
+        AfterChange();
+    }
+
+    private void RotateCcw()
+    {
+        if (_engine.RotateCcw())
         {
             _soundService.PlayRotate();
         }

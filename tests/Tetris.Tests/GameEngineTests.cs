@@ -96,6 +96,45 @@ public class GameEngineTests
     }
 
     /// <summary>
+    /// 通常の空間で反時計回転が成功し、形状が変化することを確認する。
+    /// パス条件: <see cref="GameEngine.RotateCcw"/> が true を返し、Current の Cells が回転前と異なる。
+    /// </summary>
+    [Fact]
+    public void RotateCcw_Succeeds_WhenSpaceAvailable()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = 4 });
+        var before = (bool[,])engine.Current!.Cells.Clone();
+
+        Assert.True(engine.RotateCcw());
+
+        Assert.NotEqual(before, engine.Current!.Cells);
+    }
+
+    /// <summary>
+    /// 左端に寄せた状態で反時計回転してもウォールキックにより回転が成功することを確認する。
+    /// パス条件: 左端で通常なら回転不可な位置から、キック後に回転が成功する。
+    /// </summary>
+    [Fact]
+    public void RotateCcw_NearLeftWall_UsesWallKick()
+    {
+        var engine = StartedEngine();
+
+        // 左端まで寄せる。
+        for (int i = 0; i < GameEngine.Columns; i++)
+        {
+            engine.MoveLeft();
+        }
+        int minColumn = engine.Current!.Blocks().Min(b => b.X);
+        Assert.Equal(0, minColumn); // 前提: 左端に到達している
+
+        Assert.True(engine.RotateCcw());
+
+        // 回転後も盤面内に収まっている。
+        Assert.True(engine.Current!.Blocks().All(b => b.X >= 0 && b.X < GameEngine.Columns));
+    }
+
+    /// <summary>
     /// ゴースト位置が現在位置以下かつ盤面内に収まることを確認する。
     /// パス条件: GhostY が現在 Y 以上で、ゴースト最下セルが盤面の行数未満。
     /// </summary>

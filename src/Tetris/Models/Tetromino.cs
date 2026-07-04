@@ -122,6 +122,21 @@ public sealed class Tetromino
         return new Tetromino(Type, rotated, X, Y);
     }
 
+    /// <summary>反時計回りに 90 度回転させた新しいピースを返す。</summary>
+    public Tetromino RotatedCcw()
+    {
+        int n = Size;
+        var rotated = new bool[n, n];
+        for (int y = 0; y < n; y++)
+        {
+            for (int x = 0; x < n; x++)
+            {
+                rotated[n - 1 - x, y] = Cells[y, x];
+            }
+        }
+        return new Tetromino(Type, rotated, X, Y);
+    }
+
     /// <summary>このピースが占有する盤面セルを列挙する（X=列, Y=行）。</summary>
     public IEnumerable<(int X, int Y)> Blocks()
     {
