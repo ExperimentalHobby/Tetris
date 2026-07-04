@@ -77,6 +77,61 @@ public class TetrominoTests
     }
 
     /// <summary>
+    /// T ピースが反時計回り 90 度に正しく回転することを確認する。
+    /// パス条件: 回転後の <c>Cells</c> が期待する反時計回り姿勢と一致する。
+    /// </summary>
+    [Fact]
+    public void RotatedCcw_TPiece_MatchesCounterClockwiseRotation()
+    {
+        // T の初期姿勢（3x3）:
+        //   . X .
+        //   X X X
+        //   . . .
+        var t = new Tetromino(TetrominoType.T);
+        var rotated = t.RotatedCcw();
+
+        // 反時計回り 90 度:
+        //   . X .
+        //   X X .
+        //   . X .
+        var expected = new[,]
+        {
+            { false, true,  false },
+            { true,  true,  false },
+            { false, true,  false },
+        };
+        Assert.True(CellsEqual(expected, rotated.Cells));
+    }
+
+    /// <summary>
+    /// 4 回反時計回転すると元の姿勢に戻ることを確認する。
+    /// パス条件: 4 回反時計回転後の <c>Cells</c> が初期形状と一致する。
+    /// </summary>
+    [Fact]
+    public void RotatedCcw_FourTimes_ReturnsToOriginalShape()
+    {
+        var piece = new Tetromino(TetrominoType.T);
+        var original = (bool[,])piece.Cells.Clone();
+
+        var result = piece.RotatedCcw().RotatedCcw().RotatedCcw().RotatedCcw();
+
+        Assert.True(CellsEqual(original, result.Cells));
+    }
+
+    /// <summary>
+    /// O ピースは反時計回転しても形が変わらないことを確認する。
+    /// パス条件: 反時計回転後の <c>Cells</c> が回転前と一致する。
+    /// </summary>
+    [Fact]
+    public void RotatedCcw_OPiece_KeepsSameShape()
+    {
+        var o = new Tetromino(TetrominoType.O);
+        var rotated = o.RotatedCcw();
+
+        Assert.True(CellsEqual(o.Cells, rotated.Cells));
+    }
+
+    /// <summary>
     /// <see cref="Tetromino.Blocks"/> が位置 (X, Y) を加味した盤面座標を返すことを確認する。
     /// パス条件: T ピースを (4,5) に置いたときの占有セルが期待値と一致する。
     /// </summary>

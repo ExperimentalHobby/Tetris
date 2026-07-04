@@ -194,6 +194,115 @@ public class GameEngineTests
     }
 
     /// <summary>
+    /// 通常の空間で反時計回転が成功し、形状が変化することを確認する。
+    /// パス条件: <see cref="GameEngine.RotateCcw"/> が true を返し、Current の Cells が回転前と異なる。
+    /// </summary>
+    [Fact]
+    public void RotateCcw_Succeeds_WhenSpaceAvailable()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = 4 });
+        var before = (bool[,])engine.Current!.Cells.Clone();
+
+        Assert.True(engine.RotateCcw());
+
+        Assert.NotEqual(before, engine.Current!.Cells);
+    }
+
+    /// <summary>
+    /// 左端に寄せた状態で反時計回転してもウォールキックにより回転が成功することを確認する。
+    /// パス条件: 左端で通常なら回転不可な位置から、キック後に回転が成功する。
+    /// </summary>
+    [Fact]
+    public void RotateCcw_NearLeftWall_UsesWallKick()
+    {
+        var engine = StartedEngine();
+
+        // 左端まで寄せる。
+        for (int i = 0; i < GameEngine.Columns; i++)
+        {
+            engine.MoveLeft();
+        }
+        int minColumn = engine.Current!.Blocks().Min(b => b.X);
+        Assert.Equal(0, minColumn); // 前提: 左端に到達している
+
+        Assert.True(engine.RotateCcw());
+
+        // 回転後も盤面内に収まっている。
+        Assert.True(engine.Current!.Blocks().All(b => b.X >= 0 && b.X < GameEngine.Columns));
+    }
+
+    /// <summary>
+    /// 開始直後、NextQueue の要素数が PreviewCount(3) であることを確認する。
+    /// パス条件: <see cref="GameEngine.NextQueue"/> の Count が 3。
+    /// </summary>
+    [Fact]
+    public void Start_NextQueue_HasThreePreviewItems()
+    {
+        var engine = StartedEngine();
+
+        Assert.Equal(3, engine.NextQueue.Count);
+    }
+
+    /// <summary>
+    /// NextQueue の先頭が NextType と一致することを確認する。
+    /// パス条件: <see cref="GameEngine.NextQueue"/>[0] が <see cref="GameEngine.NextType"/> と等しい。
+    /// </summary>
+    [Fact]
+    public void NextQueue_FirstItem_MatchesNextType()
+    {
+        var engine = StartedEngine();
+
+        Assert.Equal(engine.NextType, engine.NextQueue[0]);
+    }
+
+    /// <summary>
+    /// ピース確定後も NextQueue は 3 件を維持し、繰り上がりが正しいことを確認する。
+    /// パス条件: 固定前の NextQueue[1] が、固定後の新しい NextType(=NextQueue[0]) と一致する。
+    /// </summary>
+    [Fact]
+    public void SpawnNext_ConsumesQueueFrontAndRefillsTail()
+    {
+        var engine = StartedEngine();
+        var expectedNewNext = engine.NextQueue[1];
+
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = GameEngine.Rows - 2 });
+        engine.LockCurrentForTest();
+
+        Assert.Equal(3, engine.NextQueue.Count);
+        Assert.Equal(expectedNewNext, engine.NextType);
+    }
+
+    /// <summary>
+    /// NextQueue 越しに複数個取り出しても 7-bag の制約(1巡に全種1回ずつ)が壊れないことを確認する。
+    /// パス条件: 21 回分ピースを進めると、各種がちょうど 3 回ずつ出現する。
+    /// </summary>
+    [Fact]
+    public void NextQueue_Maintains7BagFairnessAcrossManySpawns()
+    {
+        var engine = StartedEngine();
+        var counts = new Dictionary<TetrominoType, int>();
+
+        void Count(TetrominoType type)
+        {
+            counts[type] = counts.GetValueOrDefault(type) + 1;
+        }
+
+        Count(engine.Current!.Type);
+        for (int i = 0; i < 20; i++)
+        {
+            engine.SetCurrentForTest(new Tetromino(engine.Current!.Type) { X = 0, Y = GameEngine.Rows - 2 });
+            engine.LockCurrentForTest();
+            Count(engine.Current!.Type);
+        }
+
+        foreach (TetrominoType type in Enum.GetValues<TetrominoType>())
+        {
+            Assert.Equal(3, counts[type]);
+        }
+    }
+
+    /// <summary>
     /// ゴースト位置が現在位置以下かつ盤面内に収まることを確認する。
     /// パス条件: GhostY が現在 Y 以上で、ゴースト最下セルが盤面の行数未満。
     /// </summary>

@@ -55,9 +55,8 @@
         </Storyboard>
     </Window.Resources>
     <Window.InputBindings>
-        <KeyBinding Key="Left"   Command="{Binding MoveLeftCommand}" />
-        <KeyBinding Key="Right"  Command="{Binding MoveRightCommand}" />
         <KeyBinding Key="Up"     Command="{Binding RotateCommand}" />
+        <KeyBinding Key="Z"      Command="{Binding RotateCcwCommand}" />
         <KeyBinding Key="Down"   Command="{Binding SoftDropCommand}" />
         <KeyBinding Key="Space"  Command="{Binding HardDropCommand}" />
         <KeyBinding Key="C"      Command="{Binding HoldCommand}" />
@@ -112,8 +111,8 @@
             </Border>
 
             <TextBlock Text="NEXT" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,16,0,6" />
-            <Border BorderBrush="#45475A" BorderThickness="2" Background="#11111B" Width="140" Height="120">
-                <Canvas x:Name="NextCanvas" Width="140" Height="120" />
+            <Border BorderBrush="#45475A" BorderThickness="2" Background="#11111B" Width="140" Height="300">
+                <Canvas x:Name="NextCanvas" Width="140" Height="300" />
             </Border>
 
             <TextBlock Text="SCORE" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,20,0,2" />
@@ -135,6 +134,7 @@
             <TextBlock Foreground="#BAC2DE" FontSize="13" TextWrapping="Wrap" Margin="0,24,0,0">
                 <Run Text="← → : 移動" /><LineBreak />
                 <Run Text="↑ : 回転" /><LineBreak />
+                <Run Text="Z : 逆回転" /><LineBreak />
                 <Run Text="↓ : ソフトドロップ" /><LineBreak />
                 <Run Text="Space : ハードドロップ" /><LineBreak />
                 <Run Text="C : ホールド" /><LineBreak />
