@@ -17,3 +17,6 @@ Thumbs.db
 
 # Claude Code local config
 .claude/
+
+# ローカルメモ（コミット対象外）
+docs/
