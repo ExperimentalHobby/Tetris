@@ -12,6 +12,15 @@ public sealed class GameEngine
     private readonly Queue<TetrominoType> _bag = new();
     private readonly List<int> _pendingClear = new();
 
+    /// <summary>接地してから固定するまでの猶予時間。</summary>
+    private static readonly TimeSpan LockDelayDuration = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>ロックディレイをリセットできる最大回数（無限の設置回避のため）。</summary>
+    public const int MaxLockResets = 15;
+
+    private TimeSpan _lockDelayElapsed = TimeSpan.Zero;
+    private int _lockResetCount;
+
     /// <summary>固定済みブロックの色。null は空セル。</summary>
     public TetrominoType?[,] Grid { get; } = new TetrominoType?[Rows, Columns];
 
@@ -40,6 +49,16 @@ public sealed class GameEngine
 
     /// <summary>現在のレベルに応じた 1 ステップの落下間隔。</summary>
     public TimeSpan DropInterval => TimeSpan.FromMilliseconds(Math.Max(80, 800 - (Level - 1) * 70));
+
+    /// <summary>現在のピースがこれ以上下に動けない（接地している）かどうか。</summary>
+    public bool IsGrounded => Current is not null && !CanMoveDown(Current);
+
+    private bool CanMoveDown(Tetromino piece)
+    {
+        var test = piece.Clone();
+        test.Y += 1;
+        return IsValid(test);
+    }
 
     public void Start()
     {
@@ -92,6 +111,8 @@ public sealed class GameEngine
             return;
         }
         Current = piece;
+        _lockDelayElapsed = TimeSpan.Zero;
+        _lockResetCount = 0;
     }
 
     /// <summary>
@@ -123,20 +144,31 @@ public sealed class GameEngine
     public bool MoveLeft() => TryMove(-1, 0);
     public bool MoveRight() => TryMove(1, 0);
 
-    /// <summary>1 段落下を試みる。着地したら固定処理を行う。</summary>
+    /// <summary>1 段落下を試みる。接地している場合はロックディレイ猶予中として何もしない。</summary>
     public void SoftDrop()
     {
         if (IsGameOver || Current is null)
         {
             return;
         }
-        if (!TryMove(0, 1))
-        {
-            LockPiece();
-        }
-        else
+        if (TryMove(0, 1))
         {
             Score += 1; // ソフトドロップのボーナス
+        }
+    }
+
+    /// <summary>接地からの経過時間を進める。ロックディレイを超えたら固定する。非接地なら経過時間をリセットする。</summary>
+    public void AdvanceLockDelay(TimeSpan elapsed)
+    {
+        if (IsGameOver || Current is null || !IsGrounded)
+        {
+            _lockDelayElapsed = TimeSpan.Zero;
+            return;
+        }
+        _lockDelayElapsed += elapsed;
+        if (_lockDelayElapsed >= LockDelayDuration)
+        {
+            LockPiece();
         }
     }
 
@@ -171,6 +203,7 @@ public sealed class GameEngine
             if (IsValid(test))
             {
                 Current = test;
+                OnSuccessfulAction();
                 return true;
             }
         }
@@ -189,9 +222,26 @@ public sealed class GameEngine
         if (IsValid(test))
         {
             Current = test;
+            OnSuccessfulAction();
             return true;
         }
         return false;
+    }
+
+    /// <summary>移動・回転が成功した際に呼ぶ。接地中ならロックディレイをリセットする（上限あり）。</summary>
+    private void OnSuccessfulAction()
+    {
+        if (!IsGrounded)
+        {
+            _lockDelayElapsed = TimeSpan.Zero;
+            _lockResetCount = 0;
+            return;
+        }
+        if (_lockResetCount < MaxLockResets)
+        {
+            _lockDelayElapsed = TimeSpan.Zero;
+            _lockResetCount++;
+        }
     }
 
     private bool IsValid(Tetromino piece)
