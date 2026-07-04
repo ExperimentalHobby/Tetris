@@ -44,6 +44,7 @@ public sealed class GameViewModel : ObservableObject
         HardDropCommand = new RelayCommand(HardDrop, CanPlay);
         HoldCommand = new RelayCommand(Hold, CanPlay);
         PauseCommand = new RelayCommand(TogglePause, () => _isStarted && !_engine.IsGameOver && !_engine.IsClearing);
+        ToggleMuteCommand = new RelayCommand(ToggleMute);
     }
 
     /// <summary>描画に必要な盤面情報へのアクセス（View が読み取り専用で参照する）。</summary>
@@ -70,6 +71,34 @@ public sealed class GameViewModel : ObservableObject
     public int HighScore { get => _highScore; private set => SetProperty(ref _highScore, value); }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
 
+    /// <summary>効果音の再生音量（0.0〜1.0）。</summary>
+    public double Volume
+    {
+        get => _soundService.Volume;
+        set
+        {
+            if (_soundService.Volume != value)
+            {
+                _soundService.Volume = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>ミュート中かどうか。</summary>
+    public bool IsMuted
+    {
+        get => _soundService.IsMuted;
+        set
+        {
+            if (_soundService.IsMuted != value)
+            {
+                _soundService.IsMuted = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public RelayCommand StartCommand { get; }
     public RelayCommand MoveLeftCommand { get; }
     public RelayCommand MoveRightCommand { get; }
@@ -79,6 +108,7 @@ public sealed class GameViewModel : ObservableObject
     public RelayCommand HardDropCommand { get; }
     public RelayCommand HoldCommand { get; }
     public RelayCommand PauseCommand { get; }
+    public RelayCommand ToggleMuteCommand { get; }
 
     private bool CanPlay() => _isStarted && !_isPaused && !_engine.IsGameOver && !_engine.IsClearing;
 
@@ -226,6 +256,8 @@ public sealed class GameViewModel : ObservableObject
         _engine.Hold();
         AfterChange();
     }
+
+    private void ToggleMute() => IsMuted = !IsMuted;
 
     private void TogglePause()
     {

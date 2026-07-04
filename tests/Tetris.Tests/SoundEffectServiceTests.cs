@@ -24,4 +24,62 @@ public class SoundEffectServiceTests
         service.PlayLineClear();
         service.PlayTetris();
     }
+
+    /// <summary>
+    /// 新規インスタンスの Volume が 1.0（最大）であることを確認する。
+    /// </summary>
+    [Fact]
+    public void Volume_DefaultsToOne()
+    {
+        var service = new SoundEffectService(Path.GetTempPath());
+
+        Assert.Equal(1.0, service.Volume);
+    }
+
+    /// <summary>
+    /// Volume に範囲外の値を設定すると 0.0〜1.0 にクランプされることを確認する。
+    /// </summary>
+    [Fact]
+    public void Volume_ClampsToValidRange()
+    {
+        var service = new SoundEffectService(Path.GetTempPath());
+
+        service.Volume = 1.5;
+        Assert.Equal(1.0, service.Volume);
+
+        service.Volume = -0.5;
+        Assert.Equal(0.0, service.Volume);
+    }
+
+    /// <summary>
+    /// 新規インスタンスの IsMuted が false（ミュートされていない）であることを確認する。
+    /// </summary>
+    [Fact]
+    public void IsMuted_DefaultsToFalse()
+    {
+        var service = new SoundEffectService(Path.GetTempPath());
+
+        Assert.False(service.IsMuted);
+    }
+
+    /// <summary>
+    /// 音声ファイルが存在しない環境で Volume/IsMuted を変更した後も、
+    /// 各 Play メソッドが例外を投げないことを確認する。
+    /// </summary>
+    [Fact]
+    public void PlayMethods_AfterChangingVolumeAndMute_DoNotThrow()
+    {
+        var emptyDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var service = new SoundEffectService(emptyDir)
+        {
+            Volume = 0.3,
+            IsMuted = true,
+        };
+
+        service.PlayRotate();
+        service.PlayLock();
+        service.PlayLineClear();
+        service.PlayTetris();
+        service.PlayGameOver();
+    }
 }
