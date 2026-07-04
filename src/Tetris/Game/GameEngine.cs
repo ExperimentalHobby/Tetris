@@ -8,15 +8,24 @@ public sealed class GameEngine
     public const int Columns = 10;
     public const int Rows = 20;
 
+    /// <summary>NEXT 欄で先読み表示する個数。</summary>
+    public const int PreviewCount = 3;
+
     private readonly Random _random = new();
     private readonly Queue<TetrominoType> _bag = new();
+    private readonly List<TetrominoType> _nextQueue = new();
     private readonly List<int> _pendingClear = new();
 
     /// <summary>固定済みブロックの色。null は空セル。</summary>
     public TetrominoType?[,] Grid { get; } = new TetrominoType?[Rows, Columns];
 
     public Tetromino? Current { get; private set; }
-    public TetrominoType NextType { get; private set; }
+
+    /// <summary>先読み表示用の次ピース列（先頭がすぐ次に出現する種）。</summary>
+    public IReadOnlyList<TetrominoType> NextQueue => _nextQueue;
+
+    /// <summary>次に出現するピース種（<see cref="NextQueue"/> の先頭と同じ）。</summary>
+    public TetrominoType NextType => _nextQueue[0];
 
     /// <summary>ホールド（保管）中のピース種。まだ何も保管していない場合は null。</summary>
     public TetrominoType? HeldType { get; private set; }
@@ -45,13 +54,17 @@ public sealed class GameEngine
     {
         Array.Clear(Grid, 0, Grid.Length);
         _bag.Clear();
+        _nextQueue.Clear();
         _pendingClear.Clear();
         Score = 0;
         Lines = 0;
         IsGameOver = false;
         HeldType = null;
         CanHold = true;
-        NextType = NextFromBag();
+        for (int i = 0; i < PreviewCount; i++)
+        {
+            _nextQueue.Add(NextFromBag());
+        }
         SpawnNext();
     }
 
@@ -71,8 +84,9 @@ public sealed class GameEngine
 
     private void SpawnNext()
     {
-        var type = NextType;
-        NextType = NextFromBag();
+        var type = _nextQueue[0];
+        _nextQueue.RemoveAt(0);
+        _nextQueue.Add(NextFromBag());
         SpawnPiece(type);
     }
 

@@ -449,14 +449,28 @@ public partial class MainWindow : Window
         }
     }
 
-    private void DrawNext() => DrawPiecePreview(NextCanvas, _viewModel.Engine.NextType);
+    /// <summary>NEXT 欄内で 1 ピース分が占める枠の高さ（複数先読み分を縦に並べる）。</summary>
+    private const int NextSlotHeight = 100;
 
-    private void DrawHold() => DrawPiecePreview(HoldCanvas, _viewModel.Engine.HeldType);
-
-    /// <summary>プレビュー枠の中央に指定ピースを描画する（null のときは空にする）。</summary>
-    private static void DrawPiecePreview(Canvas canvas, TetrominoType? type)
+    private void DrawNext()
     {
-        canvas.Children.Clear();
+        NextCanvas.Children.Clear();
+        var queue = _viewModel.Engine.NextQueue;
+        for (int i = 0; i < queue.Count; i++)
+        {
+            DrawPiecePreview(NextCanvas, queue[i], 0, i * NextSlotHeight, NextCanvas.Width, NextSlotHeight, previewCellSize: 20);
+        }
+    }
+
+    private void DrawHold()
+    {
+        HoldCanvas.Children.Clear();
+        DrawPiecePreview(HoldCanvas, _viewModel.Engine.HeldType, 0, 0, HoldCanvas.Width, HoldCanvas.Height, previewCellSize: 24);
+    }
+
+    /// <summary>指定した矩形範囲の中央にピースを描画する（null のときは何も描かない）。呼び出し側で Children.Clear() 済みであること。</summary>
+    private static void DrawPiecePreview(Canvas canvas, TetrominoType? type, double left, double top, double width, double height, int previewCellSize)
+    {
         if (type is null)
         {
             return;
@@ -475,18 +489,17 @@ public partial class MainWindow : Window
             maxY = Math.Max(maxY, y);
         }
 
-        const int preview = 24;
-        double width = (maxX - minX + 1) * preview;
-        double height = (maxY - minY + 1) * preview;
-        double left = (canvas.Width - width) / 2;
-        double top = (canvas.Height - height) / 2;
+        double pieceWidth = (maxX - minX + 1) * previewCellSize;
+        double pieceHeight = (maxY - minY + 1) * previewCellSize;
+        double offsetX = left + (width - pieceWidth) / 2;
+        double offsetY = top + (height - pieceHeight) / 2;
 
         foreach (var (x, y) in piece.Blocks())
         {
             DrawRect(canvas,
-                left + (x - minX) * preview,
-                top + (y - minY) * preview,
-                preview, color);
+                offsetX + (x - minX) * previewCellSize,
+                offsetY + (y - minY) * previewCellSize,
+                previewCellSize, color);
         }
     }
 

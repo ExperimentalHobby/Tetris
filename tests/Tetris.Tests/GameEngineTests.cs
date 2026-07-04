@@ -135,6 +135,76 @@ public class GameEngineTests
     }
 
     /// <summary>
+    /// 開始直後、NextQueue の要素数が PreviewCount(3) であることを確認する。
+    /// パス条件: <see cref="GameEngine.NextQueue"/> の Count が 3。
+    /// </summary>
+    [Fact]
+    public void Start_NextQueue_HasThreePreviewItems()
+    {
+        var engine = StartedEngine();
+
+        Assert.Equal(3, engine.NextQueue.Count);
+    }
+
+    /// <summary>
+    /// NextQueue の先頭が NextType と一致することを確認する。
+    /// パス条件: <see cref="GameEngine.NextQueue"/>[0] が <see cref="GameEngine.NextType"/> と等しい。
+    /// </summary>
+    [Fact]
+    public void NextQueue_FirstItem_MatchesNextType()
+    {
+        var engine = StartedEngine();
+
+        Assert.Equal(engine.NextType, engine.NextQueue[0]);
+    }
+
+    /// <summary>
+    /// ピース確定後も NextQueue は 3 件を維持し、繰り上がりが正しいことを確認する。
+    /// パス条件: 固定前の NextQueue[1] が、固定後の新しい NextType(=NextQueue[0]) と一致する。
+    /// </summary>
+    [Fact]
+    public void SpawnNext_ConsumesQueueFrontAndRefillsTail()
+    {
+        var engine = StartedEngine();
+        var expectedNewNext = engine.NextQueue[1];
+
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = GameEngine.Rows - 2 });
+        engine.LockCurrentForTest();
+
+        Assert.Equal(3, engine.NextQueue.Count);
+        Assert.Equal(expectedNewNext, engine.NextType);
+    }
+
+    /// <summary>
+    /// NextQueue 越しに複数個取り出しても 7-bag の制約(1巡に全種1回ずつ)が壊れないことを確認する。
+    /// パス条件: 21 回分ピースを進めると、各種がちょうど 3 回ずつ出現する。
+    /// </summary>
+    [Fact]
+    public void NextQueue_Maintains7BagFairnessAcrossManySpawns()
+    {
+        var engine = StartedEngine();
+        var counts = new Dictionary<TetrominoType, int>();
+
+        void Count(TetrominoType type)
+        {
+            counts[type] = counts.GetValueOrDefault(type) + 1;
+        }
+
+        Count(engine.Current!.Type);
+        for (int i = 0; i < 20; i++)
+        {
+            engine.SetCurrentForTest(new Tetromino(engine.Current!.Type) { X = 0, Y = GameEngine.Rows - 2 });
+            engine.LockCurrentForTest();
+            Count(engine.Current!.Type);
+        }
+
+        foreach (TetrominoType type in Enum.GetValues<TetrominoType>())
+        {
+            Assert.Equal(3, counts[type]);
+        }
+    }
+
+    /// <summary>
     /// ゴースト位置が現在位置以下かつ盤面内に収まることを確認する。
     /// パス条件: GhostY が現在 Y 以上で、ゴースト最下セルが盤面の行数未満。
     /// </summary>

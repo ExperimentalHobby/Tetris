@@ -111,8 +111,8 @@
             </Border>
 
             <TextBlock Text="NEXT" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,16,0,6" />
-            <Border BorderBrush="#45475A" BorderThickness="2" Background="#11111B" Width="140" Height="120">
-                <Canvas x:Name="NextCanvas" Width="140" Height="120" />
+            <Border BorderBrush="#45475A" BorderThickness="2" Background="#11111B" Width="140" Height="300">
+                <Canvas x:Name="NextCanvas" Width="140" Height="300" />
             </Border>
 
             <TextBlock Text="SCORE" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,20,0,2" />
