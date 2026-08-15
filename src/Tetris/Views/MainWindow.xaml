@@ -144,11 +144,13 @@
             <TextBlock Text="{Binding Level}" Foreground="#F9E2AF" FontSize="24" FontWeight="Bold" />
 
             <TextBlock Text="VOLUME" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
+            <!-- Focusable="False": キーボードフォーカスを受け取るとゲーム操作キー（矢印キー等）を
+                 このコントロールが奪ってしまう（音量変化・回転不能等の干渉）ため、マウス操作専用にする。 -->
             <StackPanel Orientation="Horizontal">
                 <Slider Width="90" Minimum="0" Maximum="1" Value="{Binding Volume}"
-                        VerticalAlignment="Center" />
+                        Focusable="False" VerticalAlignment="Center" />
                 <CheckBox Content="Mute" Foreground="#CDD6F4" Margin="8,0,0,0"
-                          IsChecked="{Binding IsMuted}" VerticalAlignment="Center" />
+                          IsChecked="{Binding IsMuted}" Focusable="False" VerticalAlignment="Center" />
             </StackPanel>
 
             <TextBlock Text="{Binding Status}"
