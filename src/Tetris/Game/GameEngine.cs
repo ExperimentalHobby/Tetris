@@ -232,17 +232,27 @@ public sealed class GameEngine
     public bool MoveLeft() => TryMove(-1, 0);
     public bool MoveRight() => TryMove(1, 0);
 
-    /// <summary>1 段落下を試みる。接地している場合はロックディレイ猶予中として何もしない。</summary>
+    /// <summary>プレイヤー操作による 1 段落下を試みる。接地している場合はロックディレイ猶予中として何もしない。</summary>
     public void SoftDrop()
     {
-        if (IsGameOver || Current is null)
-        {
-            return;
-        }
-        if (TryMove(0, 1))
+        if (StepDown())
         {
             Score += 1; // ソフトドロップのボーナス
         }
+    }
+
+    /// <summary>重力による自然落下で 1 段下げる。プレイヤー操作ではないため加点しない。</summary>
+    public void GravityDrop() => StepDown();
+
+    /// <summary>1 段落下を試みる共通処理。接地している場合はロックディレイ猶予中として何もしない。</summary>
+    /// <returns>移動できた場合 true。</returns>
+    private bool StepDown()
+    {
+        if (IsGameOver || Current is null)
+        {
+            return false;
+        }
+        return TryMove(0, 1);
     }
 
     /// <summary>接地からの経過時間を進める。ロックディレイを超えたら固定する。非接地なら経過時間をリセットする。</summary>
