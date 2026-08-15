@@ -149,9 +149,7 @@ public sealed class GameViewModel : ObservableObject
         {
             return;
         }
-        var interval = _timer.Interval;
         _engine.GravityDrop();
-        _engine.AdvanceLockDelay(interval);
         _timer.Interval = _engine.DropInterval;
         AfterChange();
     }
@@ -181,7 +179,11 @@ public sealed class GameViewModel : ObservableObject
 
     public void MoveRightKeyUp() => _rightRepeat.KeyUp();
 
-    /// <summary>DAS/ARR の経過を進め、リピート分の左右移動を行う専用タイマーの Tick。</summary>
+    /// <summary>
+    /// DAS/ARR の経過を進め、リピート分の左右移動を行う専用タイマーの Tick。
+    /// ロックディレイ（500ms）も落下タイマー（レベルに応じて80〜800ms）ではなくこの16ms間隔で進めることで、
+    /// 設計値どおりの精度で判定する。
+    /// </summary>
     private void OnInputTick(object? sender, EventArgs e)
     {
         if (_isPaused || _engine.IsGameOver || _engine.IsClearing)
@@ -189,6 +191,7 @@ public sealed class GameViewModel : ObservableObject
             return;
         }
         var interval = _inputTimer.Interval;
+        bool locked = _engine.AdvanceLockDelay(interval);
         int leftRepeats = _leftRepeat.Advance(interval);
         for (int i = 0; i < leftRepeats; i++)
         {
@@ -199,7 +202,7 @@ public sealed class GameViewModel : ObservableObject
         {
             _engine.MoveRight();
         }
-        if (leftRepeats > 0 || rightRepeats > 0)
+        if (locked || leftRepeats > 0 || rightRepeats > 0)
         {
             AfterChange();
         }
