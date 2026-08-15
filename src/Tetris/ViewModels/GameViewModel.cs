@@ -288,6 +288,7 @@ public sealed class GameViewModel : ObservableObject
         {
             _timer.Stop();
             _inputTimer.Stop();
+            _playStopwatch.Stop();
             _leftRepeat.KeyUp();
             _rightRepeat.KeyUp();
             Status = "PAUSED";
@@ -296,6 +297,7 @@ public sealed class GameViewModel : ObservableObject
         {
             _timer.Start();
             _inputTimer.Start();
+            _playStopwatch.Start(); // Restart ではなく Start。ポーズ前の経過時間から計測を再開する。
             Status = string.Empty;
         }
     }
