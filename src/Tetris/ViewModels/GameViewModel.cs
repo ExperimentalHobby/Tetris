@@ -150,7 +150,7 @@ public sealed class GameViewModel : ObservableObject
             return;
         }
         var interval = _timer.Interval;
-        _engine.SoftDrop();
+        _engine.GravityDrop();
         _engine.AdvanceLockDelay(interval);
         _timer.Interval = _engine.DropInterval;
         AfterChange();

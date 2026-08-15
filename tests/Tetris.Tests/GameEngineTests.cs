@@ -203,6 +203,22 @@ public class GameEngineTests
     }
 
     /// <summary>
+    /// 重力による自然落下（GravityDrop）はプレイヤー操作ではないため加点しないことを確認する。
+    /// パス条件: ピースが 1 段下に移動するが、Score は 0 のまま変化しない。
+    /// </summary>
+    [Fact]
+    public void GravityDrop_MovesDownWithoutAddingScore()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
+
+        engine.GravityDrop();
+
+        Assert.Equal(1, engine.Current!.Y);
+        Assert.Equal(0, engine.Score);
+    }
+
+    /// <summary>
     /// ロックディレイが経過する前は固定されないことを確認する。
     /// パス条件: 500ms 未満の経過時間を渡しても Grid に反映されない。
     /// </summary>
