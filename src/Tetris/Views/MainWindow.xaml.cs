@@ -6,6 +6,8 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using Tetris.Input;
+using Tetris.Services;
 using Tetris.ViewModels;
 
 namespace Tetris;
@@ -34,6 +36,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _lineClearTimer = new() { Interval = LineClearDuration };
     private readonly Random _random = new();
     private readonly List<UIElement> _effectElements = new();
+    private readonly KeyBindingService _keyBindingService = new();
+    private KeyBindings _keyBindings = KeyBindings.Default();
     private int _buryRow;
     private Storyboard? _gameOverInStoryboard;
 
@@ -41,6 +45,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel;
+        _keyBindings = _keyBindingService.Load();
+        UpdateControlsHelpText();
         _viewModel.StateChanged += (_, _) => Render();
         _viewModel.GameOver += OnGameOver;
         _viewModel.GameStarted += OnGameStarted;
@@ -54,36 +60,111 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// キー入力を <see cref="_keyBindings"/>（キーコンフィグ）経由でゲーム操作にディスパッチする。
     /// 左右移動キーは DAS/ARR による自前リピートで制御するため、OS のキーリピート（IsRepeat）は無視する。
+    /// それ以外の操作は従来の Window.InputBindings と同じく OS のキーリピートに追随する。
     /// </summary>
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.IsRepeat)
+        var action = _keyBindings.ActionFor(e.Key);
+        if (action is null)
         {
             return;
         }
-        switch (e.Key)
+
+        switch (action)
         {
-            case Key.Left:
-                _viewModel.MoveLeftKeyDown();
+            case GameAction.MoveLeft:
+                if (!e.IsRepeat)
+                {
+                    _viewModel.MoveLeftKeyDown();
+                }
                 break;
-            case Key.Right:
-                _viewModel.MoveRightKeyDown();
+            case GameAction.MoveRight:
+                if (!e.IsRepeat)
+                {
+                    _viewModel.MoveRightKeyDown();
+                }
                 break;
+            case GameAction.Rotate:
+                ExecuteIfCan(_viewModel.RotateCommand);
+                break;
+            case GameAction.RotateCcw:
+                ExecuteIfCan(_viewModel.RotateCcwCommand);
+                break;
+            case GameAction.SoftDrop:
+                ExecuteIfCan(_viewModel.SoftDropCommand);
+                break;
+            case GameAction.HardDrop:
+                ExecuteIfCan(_viewModel.HardDropCommand);
+                break;
+            case GameAction.Hold:
+                ExecuteIfCan(_viewModel.HoldCommand);
+                break;
+            case GameAction.Start:
+                ExecuteIfCan(_viewModel.StartCommand);
+                break;
+            case GameAction.Pause:
+                ExecuteIfCan(_viewModel.PauseCommand);
+                break;
+            case GameAction.ToggleMute:
+                ExecuteIfCan(_viewModel.ToggleMuteCommand);
+                break;
+        }
+    }
+
+    private static void ExecuteIfCan(ICommand command)
+    {
+        if (command.CanExecute(null))
+        {
+            command.Execute(null);
         }
     }
 
     private void OnPreviewKeyUp(object sender, KeyEventArgs e)
     {
-        switch (e.Key)
+        var action = _keyBindings.ActionFor(e.Key);
+        switch (action)
         {
-            case Key.Left:
+            case GameAction.MoveLeft:
                 _viewModel.MoveLeftKeyUp();
                 break;
-            case Key.Right:
+            case GameAction.MoveRight:
                 _viewModel.MoveRightKeyUp();
                 break;
         }
+    }
+
+    /// <summary>キーコンフィグ画面を開く。プレイ中であれば先に自動でポーズする（再開はユーザー操作に委ねる）。</summary>
+    private void OnKeyConfigClick(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.PauseCommand.CanExecute(null) && !_viewModel.IsPaused)
+        {
+            _viewModel.PauseCommand.Execute(null);
+        }
+
+        var dialog = new KeyConfigWindow(_keyBindings, _keyBindingService) { Owner = this };
+        if (dialog.ShowDialog() == true && dialog.Result is { } updated)
+        {
+            _keyBindings = updated;
+            UpdateControlsHelpText();
+        }
+    }
+
+    /// <summary>サイドパネルの操作説明テキストを現在のキーコンフィグに合わせて更新する。</summary>
+    private void UpdateControlsHelpText()
+    {
+        string K(GameAction action) => KeyDisplay.ToDisplayString(_keyBindings.GetKey(action));
+        ControlsHelpText.Text =
+            $"{K(GameAction.MoveLeft)} {K(GameAction.MoveRight)} : 移動\n" +
+            $"{K(GameAction.Rotate)} : 回転\n" +
+            $"{K(GameAction.RotateCcw)} : 逆回転\n" +
+            $"{K(GameAction.SoftDrop)} : ソフトドロップ\n" +
+            $"{K(GameAction.HardDrop)} : ハードドロップ\n" +
+            $"{K(GameAction.Hold)} : ホールド\n" +
+            $"{K(GameAction.Start)} : 開始 / リスタート\n" +
+            $"{K(GameAction.Pause)} : 一時停止\n" +
+            $"{K(GameAction.ToggleMute)} : ミュート切替";
     }
 
     private void OnLinesClearing(object? sender, LinesClearingEventArgs e)

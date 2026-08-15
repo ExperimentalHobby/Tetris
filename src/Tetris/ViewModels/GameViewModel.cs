@@ -76,6 +76,9 @@ public sealed class GameViewModel : ObservableObject
     public int HighScore { get => _highScore; private set => SetProperty(ref _highScore, value); }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
 
+    /// <summary>一時停止中かどうか（キーコンフィグ画面表示時の自動ポーズ判定などに使用）。</summary>
+    public bool IsPaused => _isPaused;
+
     /// <summary>ゲームオーバー時点のプレイ時間（統計表示用）。</summary>
     public TimeSpan PlayTime { get => _playTime; private set => SetProperty(ref _playTime, value); }
 
