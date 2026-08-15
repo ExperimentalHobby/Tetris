@@ -20,6 +20,10 @@ public sealed class AutoRepeatController
     {
         _das = das ?? DefaultDas;
         _arr = arr ?? DefaultArr;
+        if (_arr <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(arr), _arr, "ARR は正の値である必要があります（0以下だと Advance 内の除算で 0 除算になるため）。");
+        }
     }
 
     /// <summary>キーが押された瞬間に呼ぶ。リピート状態を初期化する。</summary>

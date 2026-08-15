@@ -8,6 +8,16 @@ namespace Tetris.Tests;
 public class AutoRepeatControllerTests
 {
     /// <summary>
+    /// ARR に 0（以下）を渡すと Advance 内の除算で 0 除算になるため、コンストラクタで弾くことを確認する。
+    /// パス条件: arr: TimeSpan.Zero でコンストラクタを呼ぶと ArgumentOutOfRangeException を投げる。
+    /// </summary>
+    [Fact]
+    public void Constructor_WithZeroArr_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AutoRepeatController(arr: TimeSpan.Zero));
+    }
+
+    /// <summary>
     /// 何も押していない状態では Advance が 0 を返すことを確認する。
     /// パス条件: KeyDown を呼ばずに Advance すると 0。
     /// </summary>
