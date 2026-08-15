@@ -548,8 +548,8 @@ public sealed class GameEngine
         Combo++;
         int comboBonus = 50 * (Combo - 1) * Level;
 
-        // Back-to-Back: テトリス（4ライン同時消し）が連続すると基礎点の+50%を加算する。
-        bool isDifficult = cleared == 4;
+        // Back-to-Back: テトリス（4ライン同時消し）またはT-Spinによるライン消去が連続すると基礎点の+50%を加算する。
+        bool isDifficult = cleared == 4 || _pendingTSpinKind != TSpinKind.None;
         bool isBackToBack = isDifficult && _lastClearWasDifficult;
         int backToBackBonus = isBackToBack ? baseScore / 2 : 0;
         IsBackToBack = isBackToBack;

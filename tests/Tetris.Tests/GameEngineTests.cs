@@ -703,6 +703,37 @@ public class GameEngineTests
     }
 
     /// <summary>
+    /// T-Spin によるライン消去も Back-to-Back の対象（difficult clear）に含まれることを確認する（テトリスガイドライン準拠）。
+    /// パス条件: T-Spin Single の直後にテトリスを決めると IsBackToBack == true になる。
+    /// </summary>
+    [Fact]
+    public void CommitClear_TSpinFollowedByTetris_AddsBackToBackBonus()
+    {
+        var engine = StartedEngine();
+
+        // T-Spin Single(1ライン消去)を1回決める。
+        for (int x = 0; x < GameEngine.Columns; x++)
+        {
+            if (x != 5)
+            {
+                engine.Grid[GameEngine.Rows - 1, x] = TetrominoType.J;
+            }
+        }
+        engine.Grid[GameEngine.Rows - 3, 4] = TetrominoType.J;
+        engine.Grid[GameEngine.Rows - 3, 6] = TetrominoType.J;
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = GameEngine.Rows - 3 });
+        Assert.True(engine.Rotate());
+        engine.LockCurrentForTest();
+        engine.CommitClear();
+        Assert.False(engine.IsBackToBack); // 直前に消去がないため初回はB2B対象外
+
+        // 続けてテトリスを決める。
+        ClearTetrisAtBottom(engine);
+
+        Assert.True(engine.IsBackToBack);
+    }
+
+    /// <summary>
     /// テトリスの間に易しい消去が挟まると Back-to-Back ストリークが途切れることを確認する。
     /// パス条件: テトリス→1ライン消去→テトリスの順で、3 回目のテトリスの IsBackToBack が false。
     /// </summary>
