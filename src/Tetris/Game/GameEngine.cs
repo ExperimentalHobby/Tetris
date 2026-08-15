@@ -256,18 +256,21 @@ public sealed class GameEngine
     }
 
     /// <summary>接地からの経過時間を進める。ロックディレイを超えたら固定する。非接地なら経過時間をリセットする。</summary>
-    public void AdvanceLockDelay(TimeSpan elapsed)
+    /// <returns>この呼び出しでピースを固定した場合 true。</returns>
+    public bool AdvanceLockDelay(TimeSpan elapsed)
     {
         if (IsGameOver || Current is null || !IsGrounded)
         {
             _lockDelayElapsed = TimeSpan.Zero;
-            return;
+            return false;
         }
         _lockDelayElapsed += elapsed;
         if (_lockDelayElapsed >= LockDelayDuration)
         {
             LockPiece();
+            return true;
         }
+        return false;
     }
 
     /// <summary>一気に落下させて固定する。</summary>

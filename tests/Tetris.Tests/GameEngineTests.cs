@@ -249,6 +249,21 @@ public class GameEngineTests
     }
 
     /// <summary>
+    /// ロックディレイ経過時に戻り値で固定発生を通知することを確認する（呼び出し側の再描画判定用）。
+    /// パス条件: 500ms 分の経過時間を渡すと戻り値が true になる。
+    /// </summary>
+    [Fact]
+    public void AdvanceLockDelay_WhenLockDelayExceeded_ReturnsTrue()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
+
+        bool locked = engine.AdvanceLockDelay(TimeSpan.FromMilliseconds(500));
+
+        Assert.True(locked);
+    }
+
+    /// <summary>
     /// 接地していない間はロックディレイの経過時間が積算されないことを確認する。
     /// パス条件: 出現直後（非接地）に十分長い経過時間を渡しても固定されない。
     /// </summary>
