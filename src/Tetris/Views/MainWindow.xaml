@@ -56,16 +56,8 @@
                              AutoReverse="True" RepeatBehavior="Forever" />
         </Storyboard>
     </Window.Resources>
-    <Window.InputBindings>
-        <KeyBinding Key="Up"     Command="{Binding RotateCommand}" />
-        <KeyBinding Key="Z"      Command="{Binding RotateCcwCommand}" />
-        <KeyBinding Key="Down"   Command="{Binding SoftDropCommand}" />
-        <KeyBinding Key="Space"  Command="{Binding HardDropCommand}" />
-        <KeyBinding Key="C"      Command="{Binding HoldCommand}" />
-        <KeyBinding Key="Return" Command="{Binding StartCommand}" />
-        <KeyBinding Key="P"      Command="{Binding PauseCommand}" />
-        <KeyBinding Key="M"      Command="{Binding ToggleMuteCommand}" />
-    </Window.InputBindings>
+    <!-- キー入力は MainWindow.xaml.cs の OnPreviewKeyDown/Up で KeyBindings（キーコンフィグ）経由にディスパッチする。
+         リマップに対応するため静的な Window.InputBindings は使わない。 -->
     <Viewbox Stretch="Uniform">
     <Grid Margin="16" RenderTransformOrigin="0.5,0.5">
         <Grid.RenderTransform>
@@ -153,21 +145,18 @@
                           IsChecked="{Binding IsMuted}" Focusable="False" VerticalAlignment="Center" />
             </StackPanel>
 
+            <!-- Focusable="False": クリック後もフォーカスが残るとSpace(ハードドロップ)等の
+                 ゲーム操作キーをこのボタン自身が奪ってしまう(Issue #26と同種の干渉)ため。 -->
+            <Button Content="KEY CONFIG" Padding="8,4" Margin="0,16,0,0" HorizontalAlignment="Left"
+                    Focusable="False" Click="OnKeyConfigClick" />
+
             <TextBlock Text="{Binding Status}"
                        Foreground="#F38BA8" FontSize="16" FontWeight="Bold"
                        TextWrapping="Wrap" Margin="0,24,0,0" />
 
-            <TextBlock Foreground="#BAC2DE" FontSize="13" TextWrapping="Wrap" Margin="0,24,0,0">
-                <Run Text="← → : 移動" /><LineBreak />
-                <Run Text="↑ : 回転" /><LineBreak />
-                <Run Text="Z : 逆回転" /><LineBreak />
-                <Run Text="↓ : ソフトドロップ" /><LineBreak />
-                <Run Text="Space : ハードドロップ" /><LineBreak />
-                <Run Text="C : ホールド" /><LineBreak />
-                <Run Text="Enter : 開始 / リスタート" /><LineBreak />
-                <Run Text="P : 一時停止" /><LineBreak />
-                <Run Text="M : ミュート切替" />
-            </TextBlock>
+            <!-- キーコンフィグでリマップされるため、内容は MainWindow.xaml.cs から動的に設定する。 -->
+            <TextBlock x:Name="ControlsHelpText"
+                       Foreground="#BAC2DE" FontSize="13" TextWrapping="Wrap" Margin="0,24,0,0" />
         </StackPanel>
     </Grid>
     </Viewbox>
