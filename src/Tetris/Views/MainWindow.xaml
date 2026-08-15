@@ -6,9 +6,10 @@
         xmlns:local="clr-namespace:Tetris"
         mc:Ignorable="d"
         Title="Tetris"
-        SizeToContent="WidthAndHeight"
         Background="#1E1E2E"
         ResizeMode="CanResize"
+        Width="700"
+        Height="670"
         MinWidth="500"
         MinHeight="500">
     <Window.Resources>
@@ -63,7 +64,11 @@
         <Grid.RenderTransform>
             <TranslateTransform x:Name="ShakeTransform" />
         </Grid.RenderTransform>
+        <!-- 盤面｜HOLD/NEXT列｜SCORE等の状態・設定列、の3列構成。
+             サイドパネルを1列にまとめると縦に伸び続けて盤面より高くなり画面から見切れるため、2列に分割して横に広げている。 -->
         <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="16" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="16" />
             <ColumnDefinition Width="Auto" />
@@ -111,7 +116,7 @@
             </Grid>
         </Border>
 
-        <!-- サイドパネル -->
+        <!-- HOLD/NEXT列（ピース表示系） -->
         <StackPanel Grid.Column="2">
             <TextBlock Text="HOLD" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,0,0,6" />
             <Border BorderBrush="#45475A" BorderThickness="2" Background="#11111B" Width="140" Height="120">
@@ -122,8 +127,11 @@
             <Border BorderBrush="#45475A" BorderThickness="2" Background="#11111B" Width="140" Height="300">
                 <Canvas x:Name="NextCanvas" Width="140" Height="300" />
             </Border>
+        </StackPanel>
 
-            <TextBlock Text="SCORE" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,20,0,2" />
+        <!-- ゲーム状態・設定列（SCORE等・VOLUME・KEY CONFIG・ステータス・操作説明） -->
+        <StackPanel Grid.Column="4">
+            <TextBlock Text="SCORE" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,0,0,2" />
             <TextBlock Text="{Binding Score}" Foreground="#A6E3A1" FontSize="24" FontWeight="Bold" />
 
             <TextBlock Text="BEST" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
