@@ -544,6 +544,13 @@ public sealed class GameEngine
             baseScore = table[cleared] * Level;
         }
 
+        // Perfect Clear（全消し）: 消去後に盤面が完全に空になった場合、通常/T-Spinの得点を専用テーブルで上書きする。
+        if (IsBoardEmpty())
+        {
+            int[] perfectClearTable = { 0, 800, 1200, 1800, 2000 };
+            baseScore = perfectClearTable[cleared] * Level;
+        }
+
         // コンボ: 消去が連続するほど加点（1回目はボーナスなし）。
         Combo++;
         int comboBonus = 50 * (Combo - 1) * Level;
@@ -560,6 +567,22 @@ public sealed class GameEngine
 
         _pendingClear.Clear();
         SpawnNext();
+    }
+
+    /// <summary>盤面に固定ブロックが1つも無い（Perfect Clear）状態かどうかを返す。</summary>
+    private bool IsBoardEmpty()
+    {
+        for (int y = 0; y < Rows; y++)
+        {
+            for (int x = 0; x < Columns; x++)
+            {
+                if (Grid[y, x] is not null)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /// <summary>テスト用: 現在の落下ピースを差し替える（決定的な盤面を作るため）。</summary>
