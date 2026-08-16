@@ -14,8 +14,9 @@ public sealed class GameViewModel : ObservableObject
     private readonly GameEngine _engine = new();
     private readonly DispatcherTimer _timer = new();
     private readonly DispatcherTimer _inputTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
-    private readonly AutoRepeatController _leftRepeat = new();
-    private readonly AutoRepeatController _rightRepeat = new();
+    private readonly AutoRepeatSettingsService _autoRepeatSettingsService = new();
+    private AutoRepeatController _leftRepeat;
+    private AutoRepeatController _rightRepeat;
     private readonly HighScoreService _highScoreService = new();
     private readonly SoundEffectService _soundService = new();
     private readonly Stopwatch _playStopwatch = new();
@@ -36,6 +37,9 @@ public sealed class GameViewModel : ObservableObject
     public GameViewModel()
     {
         _highScore = _highScoreService.Load();
+        AutoRepeatSettings = _autoRepeatSettingsService.Load();
+        _leftRepeat = new AutoRepeatController(AutoRepeatSettings.Das, AutoRepeatSettings.Arr);
+        _rightRepeat = new AutoRepeatController(AutoRepeatSettings.Das, AutoRepeatSettings.Arr);
         _engine.PieceLocked += (_, _) => _soundService.PlayLock();
         _timer.Tick += OnTick;
         _inputTimer.Tick += OnInputTick;
@@ -75,6 +79,9 @@ public sealed class GameViewModel : ObservableObject
     public int Level { get => _level; private set => SetProperty(ref _level, value); }
     public int HighScore { get => _highScore; private set => SetProperty(ref _highScore, value); }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
+
+    /// <summary>現在のDAS/ARR設定（キーコンフィグと同様、DAS/ARR設定画面での表示・保存に使用）。</summary>
+    public AutoRepeatSettings AutoRepeatSettings { get; private set; }
 
     /// <summary>一時停止中かどうか（キーコンフィグ画面表示時の自動ポーズ判定などに使用）。</summary>
     public bool IsPaused => _isPaused;
@@ -276,6 +283,18 @@ public sealed class GameViewModel : ObservableObject
     {
         _engine.Hold();
         AfterChange();
+    }
+
+    /// <summary>
+    /// DAS/ARR設定を反映して永続化する。左右移動のリピート制御器を新しい設定値で作り直すため、
+    /// 呼び出し時点でキーが押されっぱなしの状態はリセットされる（DAS/ARR設定画面はプレイ中なら自動ポーズする想定）。
+    /// </summary>
+    public void ApplyAutoRepeatSettings(AutoRepeatSettings settings)
+    {
+        _autoRepeatSettingsService.Save(settings);
+        AutoRepeatSettings = settings;
+        _leftRepeat = new AutoRepeatController(settings.Das, settings.Arr);
+        _rightRepeat = new AutoRepeatController(settings.Das, settings.Arr);
     }
 
     private void ToggleMute() => IsMuted = !IsMuted;

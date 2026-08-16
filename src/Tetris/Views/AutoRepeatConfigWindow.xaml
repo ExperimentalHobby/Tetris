@@ -1,0 +1,30 @@
+<Window x:Class="Tetris.AutoRepeatConfigWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="DAS/ARR コンフィグ"
+        Background="#1E1E2E"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+    <StackPanel Margin="20" Width="280">
+        <TextBlock TextWrapping="Wrap" Foreground="#CDD6F4" FontSize="13" Margin="0,0,0,16">
+            DAS: キーを押してから連続移動が始まるまでの遅延(ms)<LineBreak />
+            ARR: 連続移動の間隔(ms、0より大きい値)
+        </TextBlock>
+
+        <TextBlock Text="DAS (ms)" Foreground="#CDD6F4" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBox x:Name="DasTextBox" />
+
+        <TextBlock Text="ARR (ms)" Foreground="#CDD6F4" FontWeight="Bold" Margin="0,12,0,4" />
+        <TextBox x:Name="ArrTextBox" />
+
+        <TextBlock x:Name="ErrorText" Foreground="#F38BA8" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0" Visibility="Collapsed" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="既定に戻す" Padding="10,4" Margin="0,0,8,0" Click="OnResetClick" />
+            <Button Content="キャンセル" Padding="10,4" Margin="0,0,8,0" Click="OnCancelClick" />
+            <Button Content="保存" Padding="10,4" Click="OnSaveClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

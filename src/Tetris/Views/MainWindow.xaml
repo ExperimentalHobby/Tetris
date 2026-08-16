@@ -147,8 +147,12 @@
 
             <!-- Focusable="False": クリック後もフォーカスが残るとSpace(ハードドロップ)等の
                  ゲーム操作キーをこのボタン自身が奪ってしまう(Issue #26と同種の干渉)ため。 -->
-            <Button Content="KEY CONFIG" Padding="8,4" Margin="0,16,0,0" HorizontalAlignment="Left"
-                    Focusable="False" Click="OnKeyConfigClick" />
+            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                <Button Content="KEY CONFIG" Padding="8,4"
+                        Focusable="False" Click="OnKeyConfigClick" />
+                <Button Content="DAS/ARR CONFIG" Padding="8,4" Margin="8,0,0,0"
+                        Focusable="False" Click="OnAutoRepeatConfigClick" />
+            </StackPanel>
 
             <TextBlock Text="{Binding Status}"
                        Foreground="#F38BA8" FontSize="16" FontWeight="Bold"
