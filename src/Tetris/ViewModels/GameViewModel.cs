@@ -14,11 +14,11 @@ public sealed class GameViewModel : ObservableObject
     private readonly GameEngine _engine = new();
     private readonly DispatcherTimer _timer = new();
     private readonly DispatcherTimer _inputTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
-    private readonly AutoRepeatSettingsService _autoRepeatSettingsService = new();
+    private readonly AutoRepeatSettingsService _autoRepeatSettingsService;
     private AutoRepeatController _leftRepeat;
     private AutoRepeatController _rightRepeat;
-    private readonly HighScoreService _highScoreService = new();
-    private readonly SoundEffectService _soundService = new();
+    private readonly HighScoreService _highScoreService;
+    private readonly SoundEffectService _soundService;
     private readonly Stopwatch _playStopwatch = new();
 
     private bool _isStarted;
@@ -36,8 +36,16 @@ public sealed class GameViewModel : ObservableObject
     private double _pps;
     private double _lpm;
 
-    public GameViewModel()
+    public GameViewModel() : this(new HighScoreService(), new AutoRepeatSettingsService(), new SoundEffectService())
     {
+    }
+
+    /// <summary>テスト用: 各Serviceを注入してインスタンスを生成する（実ファイル・実音声への副作用を避けるため）。</summary>
+    internal GameViewModel(HighScoreService highScoreService, AutoRepeatSettingsService autoRepeatSettingsService, SoundEffectService soundService)
+    {
+        _highScoreService = highScoreService;
+        _autoRepeatSettingsService = autoRepeatSettingsService;
+        _soundService = soundService;
         _highScore = _highScoreService.Load();
         AutoRepeatSettings = _autoRepeatSettingsService.Load();
         _leftRepeat = new AutoRepeatController(AutoRepeatSettings.Das, AutoRepeatSettings.Arr);
@@ -393,6 +401,12 @@ public sealed class GameViewModel : ObservableObject
             GameOver?.Invoke(this, EventArgs.Empty);
         }
     }
+
+    /// <summary>
+    /// テスト用: AfterChange() を直接呼び出す。Engine のテストシームで盤面を直接操作した後、
+    /// イベント発火や状態反映（GameOver/LinesClearing 等）を検証するために使う。
+    /// </summary>
+    internal void RefreshForTest() => AfterChange();
 
     /// <summary>経過時間・ピース数・テトリス率・PPS・LPMを現在の状態から再計算して反映する（プレイ中も逐次呼ばれる）。</summary>
     private void UpdateLiveStats()
