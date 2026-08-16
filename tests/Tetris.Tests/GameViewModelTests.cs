@@ -109,12 +109,13 @@ public class GameViewModelTests : IDisposable
     public void Start_RaisesGameStartedEvent()
     {
         var vm = CreateViewModel();
-int raisedCount = 0;
-vm.GameStarted += (_, _) => raisedCount++;
+        int raisedCount = 0;
+        vm.GameStarted += (_, _) => raisedCount++;
 
-vm.StartCommand.Execute(null);
+        vm.StartCommand.Execute(null);
 
-Assert.Equal(1, raisedCount);
+        Assert.Equal(1, raisedCount);
+    }
 
     /// <summary>
     /// 移動操作の結果として StateChanged イベントが発火することを確認する（View の再描画トリガー）。
