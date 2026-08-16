@@ -43,9 +43,20 @@ public partial class AutoRepeatConfigWindow : Window
             return;
         }
 
-        if (!AutoRepeatSettings.TryCreate(
-                TimeSpan.FromMilliseconds(dasMs), TimeSpan.FromMilliseconds(arrMs),
-                out var settings, out var error))
+        TimeSpan das;
+        TimeSpan arr;
+        try
+        {
+            das = TimeSpan.FromMilliseconds(dasMs);
+            arr = TimeSpan.FromMilliseconds(arrMs);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            ShowError("DAS/ARR の値が大きすぎます。");
+            return;
+        }
+
+        if (!AutoRepeatSettings.TryCreate(das, arr, out var settings, out var error))
         {
             ShowError(error!);
             return;
