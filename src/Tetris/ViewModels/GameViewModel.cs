@@ -33,6 +33,8 @@ public sealed class GameViewModel : ObservableObject
     private TimeSpan _playTime;
     private int _pieceCount;
     private double _tetrisRate;
+    private double _pps;
+    private double _lpm;
 
     public GameViewModel()
     {
@@ -86,14 +88,20 @@ public sealed class GameViewModel : ObservableObject
     /// <summary>一時停止中かどうか（キーコンフィグ画面表示時の自動ポーズ判定などに使用）。</summary>
     public bool IsPaused => _isPaused;
 
-    /// <summary>ゲームオーバー時点のプレイ時間（統計表示用）。</summary>
+    /// <summary>経過プレイ時間（統計表示用）。プレイ中も逐次更新され、ゲームオーバー時点で確定する。</summary>
     public TimeSpan PlayTime { get => _playTime; private set => SetProperty(ref _playTime, value); }
 
-    /// <summary>ゲームオーバー時点の出現ピース総数（統計表示用）。</summary>
+    /// <summary>出現ピース総数（統計表示用）。プレイ中も逐次更新され、ゲームオーバー時点で確定する。</summary>
     public int PieceCount { get => _pieceCount; private set => SetProperty(ref _pieceCount, value); }
 
-    /// <summary>ゲームオーバー時点のテトリス率(%)（統計表示用）。</summary>
+    /// <summary>テトリス率(%)（統計表示用）。プレイ中も逐次更新され、ゲームオーバー時点で確定する。</summary>
     public double TetrisRate { get => _tetrisRate; private set => SetProperty(ref _tetrisRate, value); }
+
+    /// <summary>PPS（Pieces Per Second、統計表示用）。プレイ中も逐次更新され、ゲームオーバー時点で確定する。</summary>
+    public double Pps { get => _pps; private set => SetProperty(ref _pps, value); }
+
+    /// <summary>LPM（Lines Per Minute、統計表示用）。プレイ中も逐次更新され、ゲームオーバー時点で確定する。</summary>
+    public double Lpm { get => _lpm; private set => SetProperty(ref _lpm, value); }
 
     /// <summary>効果音の再生音量（0.0〜1.0）。</summary>
     public double Volume
@@ -330,6 +338,10 @@ public sealed class GameViewModel : ObservableObject
         Score = _engine.Score;
         Lines = _engine.Lines;
         Level = _engine.Level;
+        if (_isStarted)
+        {
+            UpdateLiveStats();
+        }
 
         // 満杯行が揃ったら、落下を止めて消去アニメーションを再生してもらう。
         if (_engine.IsClearing)
@@ -357,9 +369,7 @@ public sealed class GameViewModel : ObservableObject
                 _gameOverNotified = true;
                 justEnded = true;
                 _playStopwatch.Stop();
-                PlayTime = _playStopwatch.Elapsed;
-                PieceCount = _engine.PieceCount;
-                TetrisRate = _engine.TetrisRate;
+                UpdateLiveStats(); // 停止時点の値で最終確定する。
                 _soundService.PlayGameOver();
                 if (_engine.Score > _highScore)
                 {
@@ -380,5 +390,15 @@ public sealed class GameViewModel : ObservableObject
             }
             GameOver?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    /// <summary>経過時間・ピース数・テトリス率・PPS・LPMを現在の状態から再計算して反映する（プレイ中も逐次呼ばれる）。</summary>
+    private void UpdateLiveStats()
+    {
+        PlayTime = _playStopwatch.Elapsed;
+        PieceCount = _engine.PieceCount;
+        TetrisRate = _engine.TetrisRate;
+        Pps = PlayStatsCalculator.PiecesPerSecond(_engine.PieceCount, PlayTime);
+        Lpm = PlayStatsCalculator.LinesPerMinute(_engine.Lines, PlayTime);
     }
 }
