@@ -145,7 +145,7 @@
 
             <!-- プレイ中も逐次更新される統計（TIME/PPS/LPM）。ゲームオーバー時の最終サマリーはオーバーレイ側に別途表示する。 -->
             <TextBlock Text="TIME" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
-            <TextBlock Text="{Binding PlayTime, Mode=OneWay, StringFormat={}{0:mm\\:ss}}"
+            <TextBlock Text="{Binding PlayTime, Mode=OneWay, StringFormat={}{0:hh\\:mm\\:ss}}"
                        Foreground="#94E2D5" FontSize="20" FontWeight="Bold" />
 
             <TextBlock Text="PPS / LPM" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
