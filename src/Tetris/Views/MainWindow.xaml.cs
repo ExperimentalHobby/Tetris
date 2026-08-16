@@ -138,16 +138,34 @@ public partial class MainWindow : Window
     /// <summary>キーコンフィグ画面を開く。プレイ中であれば先に自動でポーズする（再開はユーザー操作に委ねる）。</summary>
     private void OnKeyConfigClick(object sender, RoutedEventArgs e)
     {
-        if (_viewModel.PauseCommand.CanExecute(null) && !_viewModel.IsPaused)
-        {
-            _viewModel.PauseCommand.Execute(null);
-        }
+        PauseIfPlaying();
 
         var dialog = new KeyConfigWindow(_keyBindings, _keyBindingService) { Owner = this };
         if (dialog.ShowDialog() == true && dialog.Result is { } updated)
         {
             _keyBindings = updated;
             UpdateControlsHelpText();
+        }
+    }
+
+    /// <summary>DAS/ARRコンフィグ画面を開く。プレイ中であれば先に自動でポーズする（再開はユーザー操作に委ねる）。</summary>
+    private void OnAutoRepeatConfigClick(object sender, RoutedEventArgs e)
+    {
+        PauseIfPlaying();
+
+        var dialog = new AutoRepeatConfigWindow(_viewModel.AutoRepeatSettings) { Owner = this };
+        if (dialog.ShowDialog() == true && dialog.Result is { } updated)
+        {
+            _viewModel.ApplyAutoRepeatSettings(updated);
+        }
+    }
+
+    /// <summary>プレイ中（ポーズ可能かつ未ポーズ）であればポーズする。設定画面を開く直前の共通処理。</summary>
+    private void PauseIfPlaying()
+    {
+        if (_viewModel.PauseCommand.CanExecute(null) && !_viewModel.IsPaused)
+        {
+            _viewModel.PauseCommand.Execute(null);
         }
     }
 
