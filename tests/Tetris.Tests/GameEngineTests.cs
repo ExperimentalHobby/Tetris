@@ -861,11 +861,13 @@ public class GameEngineTests
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = 4 });
-        var before = (bool[,])engine.Current!.Cells.Clone();
+        var beforeBlocks = engine.Current!.Blocks().ToArray();
+        int beforeRotation = engine.Current!.RotationState;
 
         Assert.True(engine.Rotate());
 
-        Assert.NotEqual(before, engine.Current!.Cells);
+        Assert.Equal((beforeRotation + 1) % 4, engine.Current!.RotationState);
+        Assert.False(beforeBlocks.SequenceEqual(engine.Current!.Blocks().ToArray()));
     }
 
     /// <summary>
