@@ -143,6 +143,16 @@
             <TextBlock Text="LEVEL" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
             <TextBlock Text="{Binding Level}" Foreground="#F9E2AF" FontSize="24" FontWeight="Bold" />
 
+            <!-- プレイ中も逐次更新される統計（TIME/PPS/LPM）。ゲームオーバー時の最終サマリーはオーバーレイ側に別途表示する。 -->
+            <TextBlock Text="TIME" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
+            <TextBlock Text="{Binding PlayTime, Mode=OneWay, StringFormat={}{0:mm\\:ss}}"
+                       Foreground="#94E2D5" FontSize="20" FontWeight="Bold" />
+
+            <TextBlock Text="PPS / LPM" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
+            <TextBlock Foreground="#94E2D5" FontSize="20" FontWeight="Bold">
+                <Run Text="{Binding Pps, Mode=OneWay, StringFormat={}{0:F2}}" /><Run Text=" / " /><Run Text="{Binding Lpm, Mode=OneWay, StringFormat={}{0:F1}}" />
+            </TextBlock>
+
             <TextBlock Text="VOLUME" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
             <!-- Focusable="False": キーボードフォーカスを受け取るとゲーム操作キー（矢印キー等）を
                  このコントロールが奪ってしまう（音量変化・回転不能等の干渉）ため、マウス操作専用にする。 -->
