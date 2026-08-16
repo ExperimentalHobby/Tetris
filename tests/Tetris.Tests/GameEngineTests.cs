@@ -29,9 +29,15 @@ public class GameEngineTests
         engine.CommitClear();
     }
 
-    /// <summary>最下 4 行をテトリス(4ライン同時消し)で完成させて確定するヘルパー（コンボ・B2B テスト用）。</summary>
+    /// <summary>
+    /// 最下 4 行をテトリス(4ライン同時消し)で完成させて確定するヘルパー（コンボ・B2B テスト用）。
+    /// 最上段(行0)に残存ブロックを置き、Perfect Clear（全消し）にならないようにする
+    /// （このヘルパーは「通常のテトリス」を意図したもので、Perfect Clear用の別テストと区別するため）。
+    /// </summary>
     private static void ClearTetrisAtBottom(GameEngine engine)
     {
+        engine.Grid[0, 0] = TetrominoType.J;
+
         for (int row = GameEngine.Rows - 4; row < GameEngine.Rows; row++)
         {
             for (int x = 1; x < GameEngine.Columns; x++)
@@ -502,6 +508,9 @@ public class GameEngineTests
     {
         var engine = StartedEngine();
 
+        // 最上段に残存ブロックを置き、Perfect Clear（全消し）にならないようにする（本テストは通常のテトリス得点を検証する）。
+        engine.Grid[0, 0] = TetrominoType.J;
+
         // 下 4 行の列 1..9 を埋め、列 0 を縦 I ピースで補完して 4 ライン同時消し。
         for (int row = GameEngine.Rows - 4; row < GameEngine.Rows; row++)
         {
@@ -750,5 +759,63 @@ public class GameEngineTests
 
         ClearTetrisAtBottom(engine);
         Assert.False(engine.IsBackToBack);
+    }
+
+    /// <summary>
+    /// 1ライン消去で盤面が完全に空になる（Perfect Clear）と、通常の得点(100×Level)ではなく
+    /// Perfect Clearボーナス(800×Level)が加算されることを確認する。
+    /// パス条件: 最下行の列0-5をJで、列6-9を横向きIピースで埋めて1ライン消去・全消しにすると Score=800×Level。
+    /// </summary>
+    [Fact]
+    public void CommitClear_PerfectClearSingleLine_ScoresPerfectClearBonus()
+    {
+        var engine = StartedEngine();
+
+        for (int x = 0; x < 6; x++)
+        {
+            engine.Grid[GameEngine.Rows - 1, x] = TetrominoType.J;
+        }
+        var piece = new Tetromino(TetrominoType.I) { X = 6, Y = GameEngine.Rows - 2 };
+        engine.SetCurrentForTest(piece);
+        engine.LockCurrentForTest();
+        Assert.True(engine.IsClearing);
+
+        engine.CommitClear();
+
+        Assert.Equal(1, engine.Lines);
+        Assert.Equal(800 * engine.Level, engine.Score);
+    }
+
+    /// <summary>
+    /// テトリス（4ライン同時消し）で盤面が完全に空になる（Perfect Clear）と、通常のテトリス得点(800×Level)
+    /// ではなく Perfect Clearボーナス(2000×Level)が加算されることを確認する。
+    /// パス条件: 下4行の列1-9をJで、列0を縦Iピースで埋めて4ライン同時消し・全消しにすると Score=2000×Level。
+    /// </summary>
+    [Fact]
+    public void CommitClear_PerfectClearTetris_ScoresPerfectClearBonus()
+    {
+        var engine = StartedEngine();
+
+        for (int row = GameEngine.Rows - 4; row < GameEngine.Rows; row++)
+        {
+            for (int x = 1; x < GameEngine.Columns; x++)
+            {
+                engine.Grid[row, x] = TetrominoType.J;
+            }
+        }
+        var verticalI = new Tetromino(TetrominoType.I).Rotated();
+        var cells = verticalI.Blocks().ToList();
+        int localColumn = cells[0].X;
+        int minLocalRow = cells.Min(c => c.Y);
+        verticalI.X = -localColumn;
+        verticalI.Y = (GameEngine.Rows - 4) - minLocalRow;
+        engine.SetCurrentForTest(verticalI);
+        engine.LockCurrentForTest();
+        Assert.True(engine.IsClearing);
+
+        engine.CommitClear();
+
+        Assert.Equal(4, engine.Lines);
+        Assert.Equal(2000 * engine.Level, engine.Score);
     }
 }
