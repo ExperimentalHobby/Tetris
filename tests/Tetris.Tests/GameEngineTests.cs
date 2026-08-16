@@ -818,4 +818,192 @@ public class GameEngineTests
         Assert.Equal(4, engine.Lines);
         Assert.Equal(2000 * engine.Level, engine.Score);
     }
+
+    /// <summary>
+    /// ハードドロップでピースがゴースト位置まで落下し固定されることを確認する。
+    /// パス条件: HardDrop() 後、ゴースト位置に対応するセルにピースの色が入る。
+    /// </summary>
+    [Fact]
+    public void HardDrop_LocksPieceAtGhostPosition()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
+        int ghostY = engine.GhostY();
+
+        engine.HardDrop();
+
+        Assert.Equal(TetrominoType.O, engine.Grid[ghostY + 1, 4]);
+        Assert.Equal(TetrominoType.O, engine.Grid[ghostY + 1, 5]);
+    }
+
+    /// <summary>
+    /// ハードドロップで落下距離×2点が加算されることを確認する。
+    /// パス条件: 落下距離(ゴーストYと開始Yの差)の2倍がScoreに加算される。
+    /// </summary>
+    [Fact]
+    public void HardDrop_AddsDoubleDistanceScore()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
+        int expectedDistance = engine.GhostY();
+
+        engine.HardDrop();
+
+        Assert.Equal(expectedDistance * 2, engine.Score);
+    }
+
+    /// <summary>
+    /// 十分な空間がある位置で時計回り回転が成功することを確認する（RotateCcw版の対）。
+    /// パス条件: 中央付近で Rotate() が true を返し、形状が変化する。
+    /// </summary>
+    [Fact]
+    public void Rotate_Succeeds_WhenSpaceAvailable()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = 4 });
+        var before = (bool[,])engine.Current!.Cells.Clone();
+
+        Assert.True(engine.Rotate());
+
+        Assert.NotEqual(before, engine.Current!.Cells);
+    }
+
+    /// <summary>
+    /// 右端に寄せた状態で時計回転してもウォールキックにより回転が成功することを確認する（RotateCcw版の対）。
+    /// パス条件: 右端で通常なら回転不可な位置から、キック後に回転が成功し盤面内に収まる。
+    /// </summary>
+    [Fact]
+    public void Rotate_NearRightWall_UsesWallKick()
+    {
+        var engine = StartedEngine();
+
+        // 右端まで寄せる。
+        for (int i = 0; i < GameEngine.Columns; i++)
+        {
+            engine.MoveRight();
+        }
+        int maxColumn = engine.Current!.Blocks().Max(b => b.X);
+        Assert.Equal(GameEngine.Columns - 1, maxColumn); // 前提: 右端に到達している
+
+        Assert.True(engine.Rotate());
+
+        Assert.True(engine.Current!.Blocks().All(b => b.X >= 0 && b.X < GameEngine.Columns));
+    }
+
+    /// <summary>
+    /// 次のピースがスポーンできない状態で固定すると IsGameOver が true になることを確認する。
+    /// パス条件: スポーン位置(X=3〜6, 行0-2)の列を塞いだ状態でライン消去を伴わない固定をすると、
+    /// IsGameOver=true かつ Current=null になる。
+    /// </summary>
+    [Fact]
+    public void LockPiece_WhenSpawnBlocked_SetsGameOver()
+    {
+        var engine = StartedEngine();
+        for (int y = 0; y < 3; y++)
+        {
+            for (int x = 3; x <= 6; x++)
+            {
+                engine.Grid[y, x] = TetrominoType.J;
+            }
+        }
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = 10 });
+
+        engine.LockCurrentForTest();
+
+        Assert.True(engine.IsGameOver);
+        Assert.Null(engine.Current);
+    }
+
+    /// <summary>
+    /// ピースが固定されると PieceLocked イベントが発火することを確認する。
+    /// パス条件: LockCurrentForTest() 呼び出しで PieceLocked が発火する。
+    /// </summary>
+    [Fact]
+    public void LockPiece_RaisesPieceLockedEvent()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = 10 });
+        bool raised = false;
+        engine.PieceLocked += (_, _) => raised = true;
+
+        engine.LockCurrentForTest();
+
+        Assert.True(raised);
+    }
+
+    /// <summary>
+    /// 10ライン消去するとレベルが2に上がり、DropIntervalも短縮されることを確認する。
+    /// パス条件: 1ライン消去を10回行うと Lines=10・Level=2・DropInterval=730ms(800-(2-1)*70)。
+    /// </summary>
+    [Fact]
+    public void Level_AfterTenLines_BecomesTwo()
+    {
+        var engine = StartedEngine();
+        for (int i = 0; i < 10; i++)
+        {
+            ClearSingleLineAtBottom(engine);
+        }
+
+        Assert.Equal(10, engine.Lines);
+        Assert.Equal(2, engine.Level);
+        Assert.Equal(TimeSpan.FromMilliseconds(730), engine.DropInterval);
+    }
+
+    /// <summary>
+    /// 十分高いレベルでは DropInterval が下限の80msに張り付くことを確認する。
+    /// パス条件: テトリス(4ライン)消去を28回行うと Lines=112・Level=12、
+    /// 計算上は800-(12-1)*70=30msだが下限80msにクランプされる。
+    /// </summary>
+    [Fact]
+    public void DropInterval_AtHighLevel_ClampsToEightyMs()
+    {
+        var engine = StartedEngine();
+        for (int i = 0; i < 28; i++)
+        {
+            ClearTetrisAtBottom(engine);
+        }
+
+        Assert.Equal(112, engine.Lines);
+        Assert.Equal(12, engine.Level);
+        Assert.Equal(TimeSpan.FromMilliseconds(80), engine.DropInterval);
+    }
+
+    /// <summary>
+    /// ソフトドロップで1セル下がるごとに1点加算されることを確認する。
+    /// パス条件: 上部の空きスペースで SoftDrop() を2回呼ぶと Score=2。
+    /// </summary>
+    [Fact]
+    public void SoftDrop_MovesDown_AddsOnePointPerCell()
+    {
+        var engine = StartedEngine();
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
+
+        engine.SoftDrop();
+        engine.SoftDrop();
+
+        Assert.Equal(2, engine.Score);
+    }
+
+    /// <summary>
+    /// ライン消去の確定待ち(IsClearing)の間は、固定中のピースが無い(Current=null)ため
+    /// 移動操作が抑止されることを確認する。
+    /// パス条件: 満杯行を固定して IsClearing になった状態で MoveLeft() を呼んでも false が返る。
+    /// </summary>
+    [Fact]
+    public void MoveLeft_WhileClearing_DoesNothing()
+    {
+        var engine = StartedEngine();
+        for (int x = 0; x < GameEngine.Columns; x++)
+        {
+            engine.Grid[GameEngine.Rows - 1, x] = TetrominoType.J;
+        }
+        engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = 10 });
+        engine.LockCurrentForTest();
+        Assert.True(engine.IsClearing);
+        Assert.Null(engine.Current);
+
+        bool moved = engine.MoveLeft();
+
+        Assert.False(moved);
+    }
 }
