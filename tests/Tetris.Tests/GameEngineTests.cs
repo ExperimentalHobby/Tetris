@@ -871,24 +871,30 @@ public class GameEngineTests
     }
 
     /// <summary>
-    /// 右端に寄せた状態で時計回転してもウォールキックにより回転が成功することを確認する（RotateCcw版の対）。
-    /// パス条件: 右端で通常なら回転不可な位置から、キック後に回転が成功し盤面内に収まる。
+    /// 右端に寄せた縦向き I ピースを時計回転すると、ウォールキックにより横向きへの回転が成功することを確認する
+    /// （RotateCcw版の対）。StartedEngine() 直後の Current は 7-bag のランダムなピースに依存し、
+    /// 種によってはキックを経由せず回転が成功しうる（例: O ミノ）ため、SetCurrentForTest で
+    /// 確実にキックが必須になる配置（1列しか占めない縦Iを右端に置き、4列必要な横向きに回転）を作る。
+    /// パス条件: 右端(列9)の縦Iを回転すると RotationState が変化し、盤面内に収まる。
     /// </summary>
     [Fact]
     public void Rotate_NearRightWall_UsesWallKick()
     {
         var engine = StartedEngine();
+        var verticalI = new Tetromino(TetrominoType.I).Rotated(); // 状態1(縦向き、1列のみ占有)
+        engine.SetCurrentForTest(verticalI);
 
         // 右端まで寄せる。
-        for (int i = 0; i < GameEngine.Columns; i++)
+        while (engine.MoveRight())
         {
-            engine.MoveRight();
         }
         int maxColumn = engine.Current!.Blocks().Max(b => b.X);
-        Assert.Equal(GameEngine.Columns - 1, maxColumn); // 前提: 右端に到達している
+        Assert.Equal(GameEngine.Columns - 1, maxColumn); // 前提: 右端(列9)に到達している
+        int beforeRotation = engine.Current!.RotationState;
 
-        Assert.True(engine.Rotate());
+        Assert.True(engine.Rotate()); // 横向き(4列必要)への回転はキック無しでは列9に収まらない
 
+        Assert.Equal((beforeRotation + 1) % 4, engine.Current!.RotationState);
         Assert.True(engine.Current!.Blocks().All(b => b.X >= 0 && b.X < GameEngine.Columns));
     }
 
