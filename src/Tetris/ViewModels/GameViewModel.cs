@@ -149,6 +149,7 @@ public sealed class GameViewModel : ObservableObject
         _engine.Start();
         _isStarted = true;
         _isPaused = false;
+        OnPropertyChanged(nameof(IsPaused)); // ポーズ中に再スタートされた場合（StartCommandにCanExecute制限が無い）も盤面マスクを確実に解除する。
         _gameOverNotified = false;
         _playStopwatch.Restart();
         _leftRepeat.KeyUp();
@@ -314,6 +315,7 @@ public sealed class GameViewModel : ObservableObject
             return;
         }
         _isPaused = !_isPaused;
+        OnPropertyChanged(nameof(IsPaused)); // 盤面マスクオーバーレイの表示切り替え(XAMLバインディング)に必要。
         if (_isPaused)
         {
             _timer.Stop();
