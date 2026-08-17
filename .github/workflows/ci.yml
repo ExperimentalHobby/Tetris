@@ -48,7 +48,7 @@ jobs:
         if: always()
         run: |
           dotnet tool install -g dotnet-reportgenerator-globaltool
-          reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report -reporttypes:Html;MarkdownSummaryGithub
+          reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report "-reporttypes:Html;MarkdownSummaryGithub"
 
       - name: Add coverage summary
         if: always()
