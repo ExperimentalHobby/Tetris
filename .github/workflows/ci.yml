@@ -42,7 +42,24 @@ jobs:
         run: dotnet build Tetris.sln -c Release --no-restore
 
       - name: Test
-        run: dotnet test Tetris.sln -c Release --no-build
+        run: dotnet test Tetris.sln -c Release --no-build --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+      - name: Generate coverage report
+        if: always()
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report "-reporttypes:Html;MarkdownSummaryGithub"
+
+      - name: Add coverage summary
+        if: always()
+        run: Get-Content ./coverage/report/SummaryGithub.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: ./coverage
 
   lint:
     name: Lint (Linux)
