@@ -57,6 +57,68 @@ public class GameEngineTests
 		engine.CommitClear();
 	}
 
+	/// <summary>盤面の指定した矩形範囲を埋めるヘルパー（rowEnd/colEnd は排他）。</summary>
+	private static void Fill(GameEngine engine, int rowStart, int rowEnd, int colStart, int colEnd)
+	{
+		for (int row = rowStart; row < rowEnd; row++)
+		{
+			for (int x = colStart; x < colEnd; x++)
+			{
+				engine.Grid[row, x] = TetrominoType.J;
+			}
+		}
+	}
+
+	/// <summary>
+	/// 最下行から count 行ちょうどを消去するヘルパー（count は 1〜4）。
+	/// 消去対象行を事前に埋めておき、残った隙間をぴったり埋める形のピースで固定する。
+	/// <paramref name="avoidPerfectClear"/> が true のときは最上段に残存ブロックを置き、
+	/// Perfect Clear の得点テーブルに切り替わらないようにする。
+	/// </summary>
+	private static void ClearLinesAtBottom(GameEngine engine, int count, bool avoidPerfectClear)
+	{
+		if (avoidPerfectClear)
+		{
+			engine.Grid[0, 0] = TetrominoType.J;
+		}
+
+		int bottom = GameEngine.Rows;
+		Tetromino piece;
+		switch (count)
+		{
+			case 1:
+				// 横向き I（1 行 × 4 セル）で列 6..9 を補完する。
+				Fill(engine, bottom - 1, bottom, 0, 6);
+				piece = new Tetromino(TetrominoType.I) { X = 6, Y = bottom - 2 };
+				break;
+			case 2:
+				// O（2 行 × 2 セル）で列 0..1 を補完する。
+				Fill(engine, bottom - 2, bottom, 2, GameEngine.Columns);
+				piece = new Tetromino(TetrominoType.O) { X = 0, Y = bottom - 2 };
+				break;
+			case 3:
+				// 縦向き J（列 0 の 3 行 ＋ 最上段の列 1）で隙間を補完する。
+				Fill(engine, bottom - 3, bottom - 2, 2, GameEngine.Columns);
+				Fill(engine, bottom - 2, bottom, 1, GameEngine.Columns);
+				piece = new Tetromino(TetrominoType.J).Rotated();
+				piece.X = -1;
+				piece.Y = bottom - 3;
+				break;
+			case 4:
+				// 縦向き I（列 0 の 4 行）で補完する。
+				Fill(engine, bottom - 4, bottom, 1, GameEngine.Columns);
+				piece = new Tetromino(TetrominoType.I).Rotated();
+				piece.X = -piece.Blocks().First().X;
+				piece.Y = (bottom - 4) - piece.Blocks().Min(c => c.Y);
+				break;
+			default:
+				throw new ArgumentOutOfRangeException(nameof(count), count, "count は 1〜4 のみ対応する。");
+		}
+
+		engine.SetCurrentForTest(piece);
+		engine.LockCurrentForTest();
+	}
+
 	/// <summary>
 	/// 開始直後の状態が初期化されていることを確認する。
 	/// パス条件: スコア/ライン 0、レベル 1、ゲームオーバー・消去中でなく、落下ピースが存在する。
@@ -128,18 +190,6 @@ public class GameEngineTests
 		ClearTetrisAtBottom(engine);
 
 		Assert.Equal(50.0, engine.TetrisRate);
-	}
-
-	/// <summary>
-	/// レベル 1 の落下間隔が 800ms であることを確認する。
-	/// パス条件: <see cref="GameEngine.DropInterval"/> が 800ms。
-	/// </summary>
-	[Fact]
-	public void DropIntervalAtLevelOneIs800ms()
-	{
-		var engine = StartedEngine();
-
-		Assert.Equal(System.TimeSpan.FromMilliseconds(800), engine.DropInterval);
 	}
 
 	/// <summary>
@@ -500,46 +550,6 @@ public class GameEngineTests
 	}
 
 	/// <summary>
-	/// 4 ライン同時消し（テトリス）で 800 点が入ることを確認する。
-	/// パス条件: 縦 I で 4 行を完成させ確定すると Lines=4・Score=800・消去状態が解除される。
-	/// </summary>
-	[Fact]
-	public void TetrisClearFourLinesScores800()
-	{
-		var engine = StartedEngine();
-
-		// 最上段に残存ブロックを置き、Perfect Clear（全消し）にならないようにする（本テストは通常のテトリス得点を検証する）。
-		engine.Grid[0, 0] = TetrominoType.J;
-
-		// 下 4 行の列 1..9 を埋め、列 0 を縦 I ピースで補完して 4 ライン同時消し。
-		for (int row = GameEngine.Rows - 4; row < GameEngine.Rows; row++)
-		{
-			for (int x = 1; x < GameEngine.Columns; x++)
-			{
-				engine.Grid[row, x] = TetrominoType.J;
-			}
-		}
-
-		var verticalI = new Tetromino(TetrominoType.I).Rotated();
-		var cells = verticalI.Blocks().ToList();
-		int localColumn = cells[0].X;
-		int minLocalRow = cells.Min(c => c.Y);
-		verticalI.X = -localColumn;                       // 縦 I を列 0 へ
-		verticalI.Y = (GameEngine.Rows - 4) - minLocalRow; // 行 16..19 を覆う
-		engine.SetCurrentForTest(verticalI);
-		engine.LockCurrentForTest();
-
-		Assert.True(engine.IsClearing);
-		Assert.Equal(4, engine.PendingClearRows.Count);
-
-		engine.CommitClear();
-
-		Assert.Equal(4, engine.Lines);
-		Assert.Equal(800, engine.Score);
-		Assert.False(engine.IsClearing);
-	}
-
-	/// <summary>
 	/// 3隅(尖端側2隅とも)が埋まった状態で回転により設置・1ライン消去すると
 	/// Full T-Spin Single(800×Level)が加点されることを確認する。
 	/// パス条件: 回転成功後にロックし、1ライン消去確定でScore=800。
@@ -762,64 +772,6 @@ public class GameEngineTests
 	}
 
 	/// <summary>
-	/// 1ライン消去で盤面が完全に空になる（Perfect Clear）と、通常の得点(100×Level)ではなく
-	/// Perfect Clearボーナス(800×Level)が加算されることを確認する。
-	/// パス条件: 最下行の列0-5をJで、列6-9を横向きIピースで埋めて1ライン消去・全消しにすると Score=800×Level。
-	/// </summary>
-	[Fact]
-	public void CommitClearPerfectClearSingleLineScoresPerfectClearBonus()
-	{
-		var engine = StartedEngine();
-
-		for (int x = 0; x < 6; x++)
-		{
-			engine.Grid[GameEngine.Rows - 1, x] = TetrominoType.J;
-		}
-		var piece = new Tetromino(TetrominoType.I) { X = 6, Y = GameEngine.Rows - 2 };
-		engine.SetCurrentForTest(piece);
-		engine.LockCurrentForTest();
-		Assert.True(engine.IsClearing);
-
-		engine.CommitClear();
-
-		Assert.Equal(1, engine.Lines);
-		Assert.Equal(800 * engine.Level, engine.Score);
-	}
-
-	/// <summary>
-	/// テトリス（4ライン同時消し）で盤面が完全に空になる（Perfect Clear）と、通常のテトリス得点(800×Level)
-	/// ではなく Perfect Clearボーナス(2000×Level)が加算されることを確認する。
-	/// パス条件: 下4行の列1-9をJで、列0を縦Iピースで埋めて4ライン同時消し・全消しにすると Score=2000×Level。
-	/// </summary>
-	[Fact]
-	public void CommitClearPerfectClearTetrisScoresPerfectClearBonus()
-	{
-		var engine = StartedEngine();
-
-		for (int row = GameEngine.Rows - 4; row < GameEngine.Rows; row++)
-		{
-			for (int x = 1; x < GameEngine.Columns; x++)
-			{
-				engine.Grid[row, x] = TetrominoType.J;
-			}
-		}
-		var verticalI = new Tetromino(TetrominoType.I).Rotated();
-		var cells = verticalI.Blocks().ToList();
-		int localColumn = cells[0].X;
-		int minLocalRow = cells.Min(c => c.Y);
-		verticalI.X = -localColumn;
-		verticalI.Y = (GameEngine.Rows - 4) - minLocalRow;
-		engine.SetCurrentForTest(verticalI);
-		engine.LockCurrentForTest();
-		Assert.True(engine.IsClearing);
-
-		engine.CommitClear();
-
-		Assert.Equal(4, engine.Lines);
-		Assert.Equal(2000 * engine.Level, engine.Score);
-	}
-
-	/// <summary>
 	/// ハードドロップでピースがゴースト位置まで落下し固定されることを確認する。
 	/// パス条件: HardDrop() 後、ゴースト位置に対応するセルにピースの色が入る。
 	/// </summary>
@@ -940,43 +892,6 @@ public class GameEngineTests
 	}
 
 	/// <summary>
-	/// 10ライン消去するとレベルが2に上がり、DropIntervalも短縮されることを確認する。
-	/// パス条件: 1ライン消去を10回行うと Lines=10・Level=2・DropInterval=730ms(800-(2-1)*70)。
-	/// </summary>
-	[Fact]
-	public void LevelAfterTenLinesBecomesTwo()
-	{
-		var engine = StartedEngine();
-		for (int i = 0; i < 10; i++)
-		{
-			ClearSingleLineAtBottom(engine);
-		}
-
-		Assert.Equal(10, engine.Lines);
-		Assert.Equal(2, engine.Level);
-		Assert.Equal(TimeSpan.FromMilliseconds(730), engine.DropInterval);
-	}
-
-	/// <summary>
-	/// 十分高いレベルでは DropInterval が下限の80msに張り付くことを確認する。
-	/// パス条件: テトリス(4ライン)消去を28回行うと Lines=112・Level=12、
-	/// 計算上は800-(12-1)*70=30msだが下限80msにクランプされる。
-	/// </summary>
-	[Fact]
-	public void DropIntervalAtHighLevelClampsToEightyMs()
-	{
-		var engine = StartedEngine();
-		for (int i = 0; i < 28; i++)
-		{
-			ClearTetrisAtBottom(engine);
-		}
-
-		Assert.Equal(112, engine.Lines);
-		Assert.Equal(12, engine.Level);
-		Assert.Equal(TimeSpan.FromMilliseconds(80), engine.DropInterval);
-	}
-
-	/// <summary>
 	/// ソフトドロップで1セル下がるごとに1点加算されることを確認する。
 	/// パス条件: 上部の空きスペースで SoftDrop() を2回呼ぶと Score=2。
 	/// </summary>
@@ -1014,4 +929,72 @@ public class GameEngineTests
 
 		Assert.False(moved);
 	}
+
+	/// <summary>
+	/// ライン消去数に応じた通常の得点テーブル（1/2/3/4 = 100/300/500/800、レベル補正あり）を確認する。
+	/// パス条件: count 行ちょうど消去して確定すると Score が期待値 × Level になる。
+	/// </summary>
+	[Theory]
+	[InlineData(1, 100)]
+	[InlineData(2, 300)]
+	[InlineData(3, 500)]
+	[InlineData(4, 800)]
+	public void CommitClearScoresFollowLineCountTable(int lineCount, int expectedBaseScore)
+	{
+		var engine = StartedEngine();
+		ClearLinesAtBottom(engine, lineCount, avoidPerfectClear: true);
+		Assert.Equal(lineCount, engine.PendingClearRows.Count);
+
+		engine.CommitClear();
+
+		Assert.Equal(lineCount, engine.Lines);
+		Assert.Equal(expectedBaseScore * engine.Level, engine.Score);
+	}
+
+	/// <summary>
+	/// Perfect Clear（全消し）時の得点テーブル（1/2/3/4 = 800/1200/1800/2000、レベル補正あり）を確認する。
+	/// パス条件: 消去後に盤面が空になる形で count 行消去すると、通常テーブルではなく Perfect Clear の得点になる。
+	/// </summary>
+	[Theory]
+	[InlineData(1, 800)]
+	[InlineData(2, 1200)]
+	[InlineData(3, 1800)]
+	[InlineData(4, 2000)]
+	public void CommitClearPerfectClearScoresFollowPerfectClearTable(int lineCount, int expectedBaseScore)
+	{
+		var engine = StartedEngine();
+		ClearLinesAtBottom(engine, lineCount, avoidPerfectClear: false);
+		Assert.Equal(lineCount, engine.PendingClearRows.Count);
+
+		engine.CommitClear();
+
+		Assert.Equal(lineCount, engine.Lines);
+		Assert.Equal(expectedBaseScore * engine.Level, engine.Score);
+	}
+
+	/// <summary>
+	/// 消去ライン数に応じてレベルが上がり、落下間隔が短くなることを確認する。
+	/// 下限 80ms へのクランプ（<c>Math.Max(80, 800 - (Level - 1) * 70)</c>）を跨ぐ境界値を含む。
+	/// パス条件: 1 ライン消去を clears 回行うと Lines/Level/DropInterval が期待値になる。
+	/// </summary>
+	[Theory]
+	[InlineData(0, 1, 800)]
+	[InlineData(10, 2, 730)]
+	[InlineData(50, 6, 450)]
+	[InlineData(100, 11, 100)]
+	[InlineData(110, 12, 80)]  // 計算上は 30ms だが下限 80ms にクランプされる
+	[InlineData(150, 16, 80)]
+	public void LevelAndDropIntervalFollowClearedLineCount(int clears, int expectedLevel, int expectedIntervalMs)
+	{
+		var engine = StartedEngine();
+		for (int i = 0; i < clears; i++)
+		{
+			ClearSingleLineAtBottom(engine);
+		}
+
+		Assert.Equal(clears, engine.Lines);
+		Assert.Equal(expectedLevel, engine.Level);
+		Assert.Equal(TimeSpan.FromMilliseconds(expectedIntervalMs), engine.DropInterval);
+	}
+
 }
