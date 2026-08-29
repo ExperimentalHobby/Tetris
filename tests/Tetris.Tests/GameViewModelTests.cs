@@ -298,4 +298,50 @@ public class GameViewModelTests : IDisposable
         Assert.Equal(TimeSpan.FromMilliseconds(200), reloaded.AutoRepeatSettings.Das);
         Assert.Equal(TimeSpan.FromMilliseconds(30), reloaded.AutoRepeatSettings.Arr);
     }
+
+    /// <summary>
+    /// ウィンドウのフォーカス喪失などで KeyUp が届かなかった場合に備え、ReleaseDirectionKeys() で
+    /// 左右移動の押下状態を解除できることを確認する。
+    /// パス条件: MoveLeftKeyDown 後に ReleaseDirectionKeys() を呼ぶと、DAS を大きく超える
+    /// 入力 Tick を進めてもピースが移動しない。
+    /// </summary>
+    [Fact]
+    public void ReleaseDirectionKeys_AfterKeyDown_StopsAutoRepeat()
+    {
+        var vm = CreateViewModel();
+        vm.StartCommand.Execute(null);
+        vm.MoveLeftKeyDown(); // 押下時の 1 回分はここで移動する
+        int xAfterKeyDown = vm.Engine.Current!.X;
+
+        vm.ReleaseDirectionKeys();
+        for (int i = 0; i < 60; i++) // 16ms * 60 = 960ms（既定 DAS 170ms を大きく超える）
+        {
+            vm.AdvanceInputForTest(TimeSpan.FromMilliseconds(16));
+        }
+
+        Assert.Equal(xAfterKeyDown, vm.Engine.Current!.X);
+    }
+
+    /// <summary>
+    /// 対照テスト: ReleaseDirectionKeys() を呼ばなければ、DAS 経過後の入力 Tick で
+    /// オートリピートによる移動が発生することを確認する。
+    /// （ReleaseDirectionKeys_AfterKeyDown_StopsAutoRepeat が、そもそもリピートの起きない
+    /// 条件で通っているのではないことを保証するためのテスト。）
+    /// パス条件: MoveLeftKeyDown 後に解除せず入力 Tick を進めると、押下時の位置より更に左へ動く。
+    /// </summary>
+    [Fact]
+    public void AutoRepeat_WithoutRelease_ContinuesMovingAfterDas()
+    {
+        var vm = CreateViewModel();
+        vm.StartCommand.Execute(null);
+        vm.MoveLeftKeyDown(); // 押下時の 1 回分はここで移動する
+        int xAfterKeyDown = vm.Engine.Current!.X;
+
+        for (int i = 0; i < 60; i++) // 16ms * 60 = 960ms（既定 DAS 170ms を大きく超える）
+        {
+            vm.AdvanceInputForTest(TimeSpan.FromMilliseconds(16));
+        }
+
+        Assert.True(vm.Engine.Current!.X < xAfterKeyDown);
+    }
 }

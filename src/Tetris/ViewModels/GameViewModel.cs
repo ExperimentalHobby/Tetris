@@ -160,8 +160,7 @@ public sealed class GameViewModel : ObservableObject
         OnPropertyChanged(nameof(IsPaused)); // ポーズ中に再スタートされた場合（StartCommandにCanExecute制限が無い）も盤面マスクを確実に解除する。
         _gameOverNotified = false;
         _playStopwatch.Restart();
-        _leftRepeat.KeyUp();
-        _rightRepeat.KeyUp();
+        ReleaseDirectionKeys();
         _timer.Interval = _engine.DropInterval;
         _timer.Start();
         _inputTimer.Start();
@@ -207,24 +206,36 @@ public sealed class GameViewModel : ObservableObject
     public void MoveRightKeyUp() => _rightRepeat.KeyUp();
 
     /// <summary>
+    /// 左右移動キーの押下状態を強制的に解除する。ウィンドウがフォーカスを失うと PreviewKeyUp が
+    /// 届かず、押されたままの扱いでオートリピートが動き続けてしまうため、View 側から明示的に呼ぶ。
+    /// </summary>
+    public void ReleaseDirectionKeys()
+    {
+        _leftRepeat.KeyUp();
+        _rightRepeat.KeyUp();
+    }
+
+    /// <summary>
     /// DAS/ARR の経過を進め、リピート分の左右移動を行う専用タイマーの Tick。
     /// ロックディレイ（500ms）も落下タイマー（レベルに応じて80〜800ms）ではなくこの16ms間隔で進めることで、
     /// 設計値どおりの精度で判定する。
     /// </summary>
-    private void OnInputTick(object? sender, EventArgs e)
+    private void OnInputTick(object? sender, EventArgs e) => AdvanceInput(_inputTimer.Interval);
+
+    /// <summary>入力タイマー 1 Tick 分の処理。経過時間を受け取り、ロックディレイと DAS/ARR のリピートを進める。</summary>
+    private void AdvanceInput(TimeSpan elapsed)
     {
         if (_isPaused || _engine.IsGameOver || _engine.IsClearing)
         {
             return;
         }
-        var interval = _inputTimer.Interval;
-        bool locked = _engine.AdvanceLockDelay(interval);
-        int leftRepeats = _leftRepeat.Advance(interval);
+        bool locked = _engine.AdvanceLockDelay(elapsed);
+        int leftRepeats = _leftRepeat.Advance(elapsed);
         for (int i = 0; i < leftRepeats; i++)
         {
             _engine.MoveLeft();
         }
-        int rightRepeats = _rightRepeat.Advance(interval);
+        int rightRepeats = _rightRepeat.Advance(elapsed);
         for (int i = 0; i < rightRepeats; i++)
         {
             _engine.MoveRight();
@@ -329,8 +340,7 @@ public sealed class GameViewModel : ObservableObject
             _timer.Stop();
             _inputTimer.Stop();
             _playStopwatch.Stop();
-            _leftRepeat.KeyUp();
-            _rightRepeat.KeyUp();
+            ReleaseDirectionKeys();
             Status = "PAUSED";
         }
         else
@@ -407,6 +417,9 @@ public sealed class GameViewModel : ObservableObject
     /// イベント発火や状態反映（GameOver/LinesClearing 等）を検証するために使う。
     /// </summary>
     internal void RefreshForTest() => AfterChange();
+
+    /// <summary>テスト用: 入力タイマーの Tick 処理を任意の経過時間で直接進める。</summary>
+    internal void AdvanceInputForTest(TimeSpan elapsed) => AdvanceInput(elapsed);
 
     /// <summary>経過時間・ピース数・テトリス率・PPS・LPMを現在の状態から再計算して反映する（プレイ中も逐次呼ばれる）。</summary>
     private void UpdateLiveStats()
