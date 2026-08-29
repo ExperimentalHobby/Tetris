@@ -19,7 +19,7 @@ public class GameEngineHoldTests
     /// パス条件: HeldType が null、CanHold が true。
     /// </summary>
     [Fact]
-    public void Start_HasEmptyHoldAndCanHold()
+    public void StartHasEmptyHoldAndCanHold()
     {
         var engine = StartedEngine();
 
@@ -32,7 +32,7 @@ public class GameEngineHoldTests
     /// パス条件: HeldType が元の現在ピース種、現在ピースが元の NEXT 種、CanHold が false。
     /// </summary>
     [Fact]
-    public void Hold_FirstTime_StoresCurrentAndSpawnsNext()
+    public void HoldFirstTimeStoresCurrentAndSpawnsNext()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 3, Y = 0 });
@@ -50,7 +50,7 @@ public class GameEngineHoldTests
     /// パス条件: 2 回目の Hold で HeldType・現在ピースが変化しない。
     /// </summary>
     [Fact]
-    public void Hold_TwiceWithoutLock_IsIgnored()
+    public void HoldTwiceWithoutLockIsIgnored()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 3, Y = 0 });
@@ -70,7 +70,7 @@ public class GameEngineHoldTests
     /// パス条件: 固定で CanHold が回復し、再ホールドで現在ピースと保管ピースが入れ替わる。
     /// </summary>
     [Fact]
-    public void Hold_AfterLock_SwapsWithHeldPiece()
+    public void HoldAfterLockSwapsWithHeldPiece()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 3, Y = 0 });
@@ -94,7 +94,7 @@ public class GameEngineHoldTests
     /// パス条件: ホールド後に Start すると HeldType が null、CanHold が true に戻る。
     /// </summary>
     [Fact]
-    public void Start_ResetsHoldState()
+    public void StartResetsHoldState()
     {
         var engine = StartedEngine();
         engine.Hold();
@@ -110,7 +110,7 @@ public class GameEngineHoldTests
     /// パス条件: 例外を投げず、HeldType が null のまま。
     /// </summary>
     [Fact]
-    public void Hold_BeforeStart_DoesNothing()
+    public void HoldBeforeStartDoesNothing()
     {
         var engine = new GameEngine();
 

@@ -62,7 +62,7 @@ public class GameEngineTests
     /// パス条件: スコア/ライン 0、レベル 1、ゲームオーバー・消去中でなく、落下ピースが存在する。
     /// </summary>
     [Fact]
-    public void Start_InitializesCleanState()
+    public void StartInitializesCleanState()
     {
         var engine = StartedEngine();
 
@@ -79,7 +79,7 @@ public class GameEngineTests
     /// パス条件: <see cref="GameEngine.PieceCount"/> が 1。
     /// </summary>
     [Fact]
-    public void Start_PieceCount_IsOne()
+    public void StartPieceCountIsOne()
     {
         var engine = StartedEngine();
 
@@ -91,7 +91,7 @@ public class GameEngineTests
     /// パス条件: ラインを完成させない固定の後、PieceCount が 2 になる。
     /// </summary>
     [Fact]
-    public void LockPiece_SpawningNextPiece_IncrementsPieceCount()
+    public void LockPieceSpawningNextPieceIncrementsPieceCount()
     {
         var engine = StartedEngine();
         // スポーン位置(X=4,Y=0)と重ならない場所に固定し、次ピースが正常に出現できるようにする。
@@ -107,7 +107,7 @@ public class GameEngineTests
     /// パス条件: 4ライン同時消し確定後、TetrisCount==1・TotalClearCount==1。
     /// </summary>
     [Fact]
-    public void CommitClear_TetrisClear_IncrementsTetrisCountAndTotalClearCount()
+    public void CommitClearTetrisClearIncrementsTetrisCountAndTotalClearCount()
     {
         var engine = StartedEngine();
         ClearTetrisAtBottom(engine);
@@ -121,7 +121,7 @@ public class GameEngineTests
     /// パス条件: TotalClearCount==2 のうち TetrisCount==1 なので 50.0。
     /// </summary>
     [Fact]
-    public void TetrisRate_ComputesPercentageOfTetrisClears()
+    public void TetrisRateComputesPercentageOfTetrisClears()
     {
         var engine = StartedEngine();
         ClearSingleLineAtBottom(engine);
@@ -135,7 +135,7 @@ public class GameEngineTests
     /// パス条件: <see cref="GameEngine.DropInterval"/> が 800ms。
     /// </summary>
     [Fact]
-    public void DropInterval_AtLevelOne_Is800ms()
+    public void DropIntervalAtLevelOneIs800ms()
     {
         var engine = StartedEngine();
 
@@ -147,7 +147,7 @@ public class GameEngineTests
     /// パス条件: <see cref="GameEngine.MoveLeft"/> が false を返し、落下ピースは null のまま。
     /// </summary>
     [Fact]
-    public void MoveLeft_BeforeStart_DoesNothing()
+    public void MoveLeftBeforeStartDoesNothing()
     {
         var engine = new GameEngine();
 
@@ -160,7 +160,7 @@ public class GameEngineTests
     /// パス条件: 右移動で列 +1、左移動で開始列に戻る（いずれも移動成功）。
     /// </summary>
     [Fact]
-    public void MoveRight_ThenMoveLeft_ReturnsToSameColumn()
+    public void MoveRightThenMoveLeftReturnsToSameColumn()
     {
         var engine = StartedEngine();
         int startX = engine.Current!.X;
@@ -177,7 +177,7 @@ public class GameEngineTests
     /// パス条件: 左端セルが列 0 になり、さらなる左移動は false を返す。
     /// </summary>
     [Fact]
-    public void MoveLeft_StopsAtLeftWall()
+    public void MoveLeftStopsAtLeftWall()
     {
         var engine = StartedEngine();
 
@@ -197,7 +197,7 @@ public class GameEngineTests
     /// パス条件: 接地させて SoftDrop() を呼んでも Grid には反映されず、Current が残る。
     /// </summary>
     [Fact]
-    public void SoftDrop_WhenGrounded_DoesNotLockImmediately()
+    public void SoftDropWhenGroundedDoesNotLockImmediately()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
@@ -213,7 +213,7 @@ public class GameEngineTests
     /// パス条件: ピースが 1 段下に移動するが、Score は 0 のまま変化しない。
     /// </summary>
     [Fact]
-    public void GravityDrop_MovesDownWithoutAddingScore()
+    public void GravityDropMovesDownWithoutAddingScore()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
@@ -229,7 +229,7 @@ public class GameEngineTests
     /// パス条件: 500ms 未満の経過時間を渡しても Grid に反映されない。
     /// </summary>
     [Fact]
-    public void AdvanceLockDelay_BeforeDelayElapsed_DoesNotLock()
+    public void AdvanceLockDelayBeforeDelayElapsedDoesNotLock()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
@@ -244,7 +244,7 @@ public class GameEngineTests
     /// パス条件: 500ms 分の経過時間を渡すと Grid にピースが反映される。
     /// </summary>
     [Fact]
-    public void AdvanceLockDelay_WhileGrounded_LocksAfterDelay()
+    public void AdvanceLockDelayWhileGroundedLocksAfterDelay()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
@@ -259,7 +259,7 @@ public class GameEngineTests
     /// パス条件: 500ms 分の経過時間を渡すと戻り値が true になる。
     /// </summary>
     [Fact]
-    public void AdvanceLockDelay_WhenLockDelayExceeded_ReturnsTrue()
+    public void AdvanceLockDelayWhenLockDelayExceededReturnsTrue()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
@@ -274,7 +274,7 @@ public class GameEngineTests
     /// パス条件: 出現直後（非接地）に十分長い経過時間を渡しても固定されない。
     /// </summary>
     [Fact]
-    public void AdvanceLockDelay_WhileNotGrounded_DoesNotAccumulate()
+    public void AdvanceLockDelayWhileNotGroundedDoesNotAccumulate()
     {
         var engine = StartedEngine();
 
@@ -288,7 +288,7 @@ public class GameEngineTests
     /// パス条件: 400ms 経過後に横移動でリセットし、さらに 400ms 経過しても固定されない（合計800ms相当だが未固定）。
     /// </summary>
     [Fact]
-    public void MoveLeft_WhileGrounded_ResetsLockDelay()
+    public void MoveLeftWhileGroundedResetsLockDelay()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
@@ -306,7 +306,7 @@ public class GameEngineTests
     /// パス条件: 上限（<see cref="GameEngine.MaxLockResets"/>）を超えて左右移動を繰り返すと Grid に反映される。
     /// </summary>
     [Fact]
-    public void LockDelay_MaxResetsExceeded_LocksDespiteContinuedMovement()
+    public void LockDelayMaxResetsExceededLocksDespiteContinuedMovement()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
@@ -326,7 +326,7 @@ public class GameEngineTests
     /// パス条件: <see cref="GameEngine.RotateCcw"/> が true を返し、Current の Cells が回転前と異なる。
     /// </summary>
     [Fact]
-    public void RotateCcw_Succeeds_WhenSpaceAvailable()
+    public void RotateCcwSucceedsWhenSpaceAvailable()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = 4 });
@@ -342,7 +342,7 @@ public class GameEngineTests
     /// パス条件: 左端で通常なら回転不可な位置から、キック後に回転が成功する。
     /// </summary>
     [Fact]
-    public void RotateCcw_NearLeftWall_UsesWallKick()
+    public void RotateCcwNearLeftWallUsesWallKick()
     {
         var engine = StartedEngine();
 
@@ -365,7 +365,7 @@ public class GameEngineTests
     /// パス条件: オフセット(0,0)は衝突で失敗し、I テーブル固有のオフセット(-2,0)で回転が成功して列5に来る。
     /// </summary>
     [Fact]
-    public void Rotate_IPiece_UsesIKickTable_NotJlstzTable()
+    public void RotateIPieceUsesIKickTableNotJlstzTable()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.I) { X = 5, Y = 8 });
@@ -383,7 +383,7 @@ public class GameEngineTests
     /// パス条件: <see cref="GameEngine.NextQueue"/> の Count が 3。
     /// </summary>
     [Fact]
-    public void Start_NextQueue_HasThreePreviewItems()
+    public void StartNextQueueHasThreePreviewItems()
     {
         var engine = StartedEngine();
 
@@ -395,7 +395,7 @@ public class GameEngineTests
     /// パス条件: <see cref="GameEngine.NextQueue"/>[0] が <see cref="GameEngine.NextType"/> と等しい。
     /// </summary>
     [Fact]
-    public void NextQueue_FirstItem_MatchesNextType()
+    public void NextQueueFirstItemMatchesNextType()
     {
         var engine = StartedEngine();
 
@@ -407,7 +407,7 @@ public class GameEngineTests
     /// パス条件: 固定前の NextQueue[1] が、固定後の新しい NextType(=NextQueue[0]) と一致する。
     /// </summary>
     [Fact]
-    public void SpawnNext_ConsumesQueueFrontAndRefillsTail()
+    public void SpawnNextConsumesQueueFrontAndRefillsTail()
     {
         var engine = StartedEngine();
         var expectedNewNext = engine.NextQueue[1];
@@ -424,7 +424,7 @@ public class GameEngineTests
     /// パス条件: 21 回分ピースを進めると、各種がちょうど 3 回ずつ出現する。
     /// </summary>
     [Fact]
-    public void NextQueue_Maintains7BagFairnessAcrossManySpawns()
+    public void NextQueueMaintains7BagFairnessAcrossManySpawns()
     {
         var engine = StartedEngine();
         var counts = new Dictionary<TetrominoType, int>();
@@ -453,7 +453,7 @@ public class GameEngineTests
     /// パス条件: GhostY が現在 Y 以上で、ゴースト最下セルが盤面の行数未満。
     /// </summary>
     [Fact]
-    public void GhostY_IsAtOrBelowCurrentAndWithinBoard()
+    public void GhostYIsAtOrBelowCurrentAndWithinBoard()
     {
         var engine = StartedEngine();
 
@@ -470,7 +470,7 @@ public class GameEngineTests
     /// 消去状態が解除され、上のブロックが最下行へ落ちる。
     /// </summary>
     [Fact]
-    public void SingleLineClear_IsDetectedThenCommittedWithScore()
+    public void SingleLineClearIsDetectedThenCommittedWithScore()
     {
         var engine = StartedEngine();
 
@@ -504,7 +504,7 @@ public class GameEngineTests
     /// パス条件: 縦 I で 4 行を完成させ確定すると Lines=4・Score=800・消去状態が解除される。
     /// </summary>
     [Fact]
-    public void TetrisClear_FourLines_Scores800()
+    public void TetrisClearFourLinesScores800()
     {
         var engine = StartedEngine();
 
@@ -545,7 +545,7 @@ public class GameEngineTests
     /// パス条件: 回転成功後にロックし、1ライン消去確定でScore=800。
     /// </summary>
     [Fact]
-    public void TSpin_Full_ClearsOneLine_ScoresTSpinSingle()
+    public void TSpinFullClearsOneLineScoresTSpinSingle()
     {
         var engine = StartedEngine();
 
@@ -582,7 +582,7 @@ public class GameEngineTests
     /// パス条件: ラインが完成しない配置でロック後、Score=100。
     /// </summary>
     [Fact]
-    public void TSpin_Mini_NoLines_AddsFlatBonus()
+    public void TSpinMiniNoLinesAddsFlatBonus()
     {
         var engine = StartedEngine();
 
@@ -606,7 +606,7 @@ public class GameEngineTests
     /// パス条件: 回転せず直接1ライン消去すると Score が通常の 100(T-Spinなし)になる。
     /// </summary>
     [Fact]
-    public void TSpin_RequiresLastActionRotation_TranslationDoesNotCount()
+    public void TSpinRequiresLastActionRotationTranslationDoesNotCount()
     {
         var engine = StartedEngine();
 
@@ -640,7 +640,7 @@ public class GameEngineTests
     /// パス条件: 1 回消去後、Combo == 1 かつ Score == 100 * Level（ボーナスなし）。
     /// </summary>
     [Fact]
-    public void CommitClear_SingleClear_ComboBecomesOneWithNoBonus()
+    public void CommitClearSingleClearComboBecomesOneWithNoBonus()
     {
         var engine = StartedEngine();
 
@@ -655,7 +655,7 @@ public class GameEngineTests
     /// パス条件: 2 回連続消去後、Combo == 2 かつ増加分に 50*(Combo-1)*Level のボーナスが含まれる。
     /// </summary>
     [Fact]
-    public void CommitClear_ConsecutiveClears_ComboIncrementsAndAddsBonus()
+    public void CommitClearConsecutiveClearsComboIncrementsAndAddsBonus()
     {
         var engine = StartedEngine();
 
@@ -676,7 +676,7 @@ public class GameEngineTests
     /// パス条件: コンボ成立後、消去のない固定で Combo が 0 に戻る。
     /// </summary>
     [Fact]
-    public void LockPiece_WithoutClearingLines_ResetsComboToZero()
+    public void LockPieceWithoutClearingLinesResetsComboToZero()
     {
         var engine = StartedEngine();
         ClearSingleLineAtBottom(engine);
@@ -694,7 +694,7 @@ public class GameEngineTests
     /// パス条件: 2 回目のテトリスで IsBackToBack == true になり、基礎点の +50% が加算される。
     /// </summary>
     [Fact]
-    public void CommitClear_TetrisFollowedByTetris_AddsBackToBackBonus()
+    public void CommitClearTetrisFollowedByTetrisAddsBackToBackBonus()
     {
         var engine = StartedEngine();
 
@@ -716,7 +716,7 @@ public class GameEngineTests
     /// パス条件: T-Spin Single の直後にテトリスを決めると IsBackToBack == true になる。
     /// </summary>
     [Fact]
-    public void CommitClear_TSpinFollowedByTetris_AddsBackToBackBonus()
+    public void CommitClearTSpinFollowedByTetrisAddsBackToBackBonus()
     {
         var engine = StartedEngine();
 
@@ -747,7 +747,7 @@ public class GameEngineTests
     /// パス条件: テトリス→1ライン消去→テトリスの順で、3 回目のテトリスの IsBackToBack が false。
     /// </summary>
     [Fact]
-    public void CommitClear_EasyClearBreaksBackToBack()
+    public void CommitClearEasyClearBreaksBackToBack()
     {
         var engine = StartedEngine();
 
@@ -767,7 +767,7 @@ public class GameEngineTests
     /// パス条件: 最下行の列0-5をJで、列6-9を横向きIピースで埋めて1ライン消去・全消しにすると Score=800×Level。
     /// </summary>
     [Fact]
-    public void CommitClear_PerfectClearSingleLine_ScoresPerfectClearBonus()
+    public void CommitClearPerfectClearSingleLineScoresPerfectClearBonus()
     {
         var engine = StartedEngine();
 
@@ -792,7 +792,7 @@ public class GameEngineTests
     /// パス条件: 下4行の列1-9をJで、列0を縦Iピースで埋めて4ライン同時消し・全消しにすると Score=2000×Level。
     /// </summary>
     [Fact]
-    public void CommitClear_PerfectClearTetris_ScoresPerfectClearBonus()
+    public void CommitClearPerfectClearTetrisScoresPerfectClearBonus()
     {
         var engine = StartedEngine();
 
@@ -824,7 +824,7 @@ public class GameEngineTests
     /// パス条件: HardDrop() 後、ゴースト位置に対応するセルにピースの色が入る。
     /// </summary>
     [Fact]
-    public void HardDrop_LocksPieceAtGhostPosition()
+    public void HardDropLocksPieceAtGhostPosition()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
@@ -841,7 +841,7 @@ public class GameEngineTests
     /// パス条件: 落下距離(ゴーストYと開始Yの差)の2倍がScoreに加算される。
     /// </summary>
     [Fact]
-    public void HardDrop_AddsDoubleDistanceScore()
+    public void HardDropAddsDoubleDistanceScore()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
@@ -857,7 +857,7 @@ public class GameEngineTests
     /// パス条件: 中央付近で Rotate() が true を返し、形状が変化する。
     /// </summary>
     [Fact]
-    public void Rotate_Succeeds_WhenSpaceAvailable()
+    public void RotateSucceedsWhenSpaceAvailable()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = 4 });
@@ -878,7 +878,7 @@ public class GameEngineTests
     /// パス条件: 右端(列9)の縦Iを回転すると RotationState が変化し、盤面内に収まる。
     /// </summary>
     [Fact]
-    public void Rotate_NearRightWall_UsesWallKick()
+    public void RotateNearRightWallUsesWallKick()
     {
         var engine = StartedEngine();
         var verticalI = new Tetromino(TetrominoType.I).Rotated(); // 状態1(縦向き、1列のみ占有)
@@ -904,7 +904,7 @@ public class GameEngineTests
     /// IsGameOver=true かつ Current=null になる。
     /// </summary>
     [Fact]
-    public void LockPiece_WhenSpawnBlocked_SetsGameOver()
+    public void LockPieceWhenSpawnBlockedSetsGameOver()
     {
         var engine = StartedEngine();
         for (int y = 0; y < 3; y++)
@@ -927,7 +927,7 @@ public class GameEngineTests
     /// パス条件: LockCurrentForTest() 呼び出しで PieceLocked が発火する。
     /// </summary>
     [Fact]
-    public void LockPiece_RaisesPieceLockedEvent()
+    public void LockPieceRaisesPieceLockedEvent()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = 10 });
@@ -944,7 +944,7 @@ public class GameEngineTests
     /// パス条件: 1ライン消去を10回行うと Lines=10・Level=2・DropInterval=730ms(800-(2-1)*70)。
     /// </summary>
     [Fact]
-    public void Level_AfterTenLines_BecomesTwo()
+    public void LevelAfterTenLinesBecomesTwo()
     {
         var engine = StartedEngine();
         for (int i = 0; i < 10; i++)
@@ -963,7 +963,7 @@ public class GameEngineTests
     /// 計算上は800-(12-1)*70=30msだが下限80msにクランプされる。
     /// </summary>
     [Fact]
-    public void DropInterval_AtHighLevel_ClampsToEightyMs()
+    public void DropIntervalAtHighLevelClampsToEightyMs()
     {
         var engine = StartedEngine();
         for (int i = 0; i < 28; i++)
@@ -981,7 +981,7 @@ public class GameEngineTests
     /// パス条件: 上部の空きスペースで SoftDrop() を2回呼ぶと Score=2。
     /// </summary>
     [Fact]
-    public void SoftDrop_MovesDown_AddsOnePointPerCell()
+    public void SoftDropMovesDownAddsOnePointPerCell()
     {
         var engine = StartedEngine();
         engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
@@ -998,7 +998,7 @@ public class GameEngineTests
     /// パス条件: 満杯行を固定して IsClearing になった状態で MoveLeft() を呼んでも false が返る。
     /// </summary>
     [Fact]
-    public void MoveLeft_WhileClearing_DoesNothing()
+    public void MoveLeftWhileClearingDoesNothing()
     {
         var engine = StartedEngine();
         for (int x = 0; x < GameEngine.Columns; x++)

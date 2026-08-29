@@ -19,6 +19,7 @@ public class AutoRepeatSettingsServiceTests : IDisposable
         {
             Directory.Delete(_tempDir, recursive: true);
         }
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -26,7 +27,7 @@ public class AutoRepeatSettingsServiceTests : IDisposable
     /// パス条件: Load() の Das が AutoRepeatController.DefaultDas。
     /// </summary>
     [Fact]
-    public void Load_WhenFileNotExists_ReturnsDefaultSettings()
+    public void LoadWhenFileNotExistsReturnsDefaultSettings()
     {
         var service = CreateService();
 
@@ -40,7 +41,7 @@ public class AutoRepeatSettingsServiceTests : IDisposable
     /// パス条件: Das=200ms/Arr=30ms を Save した後、Load() が同じ値を返す。
     /// </summary>
     [Fact]
-    public void Load_AfterSave_ReturnsSavedSettings()
+    public void LoadAfterSaveReturnsSavedSettings()
     {
         var service = CreateService();
         AutoRepeatSettings.TryCreate(TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(30), out var settings, out _);

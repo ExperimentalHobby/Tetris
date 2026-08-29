@@ -117,7 +117,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void ExecuteIfCan(ICommand command)
+    private static void ExecuteIfCan(RelayCommand command)
     {
         if (command.CanExecute(null))
         {
