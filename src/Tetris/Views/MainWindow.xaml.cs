@@ -28,6 +28,9 @@ public partial class MainWindow : Window
 	// 半透明にして、埋没しても下の積み上がったブロックが透けて見えるようにする。
 	private static readonly Color BuryColor = Color.FromArgb(0x80, 0x2A, 0x2A, 0x2E);
 
+	/// <summary>空セルのグリッド線に使う共有ブラシ（Freeze 済みで全セルが同一インスタンスを参照する）。</summary>
+	private static readonly SolidColorBrush GridStrokeBrush = CreateFrozenBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+
 	/// <summary>ライン消去アニメーションの総再生時間。</summary>
 	private static readonly TimeSpan LineClearDuration = TimeSpan.FromMilliseconds(480);
 
@@ -54,6 +57,7 @@ public partial class MainWindow : Window
 		_viewModel.NewRecord += OnNewRecord;
 		_buryTimer.Tick += OnBuryTick;
 		_lineClearTimer.Tick += OnLineClearFinished;
+		DrawGridLines();
 		PreviewKeyDown += OnPreviewKeyDown;
 		PreviewKeyUp += OnPreviewKeyUp;
 		// ウィンドウがフォーカスを失うと PreviewKeyUp が届かず、左右移動キーが押されたままの扱いになる。
@@ -489,13 +493,11 @@ public partial class MainWindow : Window
 		DrawHold();
 	}
 
-	private void DrawBoard()
+	/// <summary>
+	/// 空セルのグリッド線を <c>GridCanvas</c> に描画する。盤面サイズは不変なのでコンストラクタから 1 回だけ呼ぶ。
+	/// </summary>
+	private void DrawGridLines()
 	{
-		var engine = _viewModel.Engine;
-		GameCanvas.Children.Clear();
-
-		// 空セルのグリッド線
-		var gridStroke = new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
 		for (int y = 0; y < GameEngine.Rows; y++)
 		{
 			for (int x = 0; x < GameEngine.Columns; x++)
@@ -504,14 +506,28 @@ public partial class MainWindow : Window
 				{
 					Width = CellSize,
 					Height = CellSize,
-					Stroke = gridStroke,
+					Stroke = GridStrokeBrush,
 					StrokeThickness = 1,
 				};
 				Canvas.SetLeft(cell, x * CellSize);
 				Canvas.SetTop(cell, y * CellSize);
-				GameCanvas.Children.Add(cell);
+				GridCanvas.Children.Add(cell);
 			}
 		}
+	}
+
+	/// <summary>描画中に変更しないブラシを生成して凍結する（フリーズすると WPF 側の複製・通知コストが下がる）。</summary>
+	private static SolidColorBrush CreateFrozenBrush(Color color)
+	{
+		var brush = new SolidColorBrush(color);
+		brush.Freeze();
+		return brush;
+	}
+
+	private void DrawBoard()
+	{
+		var engine = _viewModel.Engine;
+		GameCanvas.Children.Clear();
 
 		// 固定済みブロック
 		for (int y = 0; y < GameEngine.Rows; y++)
