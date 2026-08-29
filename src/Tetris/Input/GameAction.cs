@@ -5,14 +5,14 @@ namespace Tetris.Input;
 /// </summary>
 public enum GameAction
 {
-    MoveLeft,
-    MoveRight,
-    Rotate,
-    RotateCcw,
-    SoftDrop,
-    HardDrop,
-    Hold,
-    Start,
-    Pause,
-    ToggleMute,
+	MoveLeft,
+	MoveRight,
+	Rotate,
+	RotateCcw,
+	SoftDrop,
+	HardDrop,
+	Hold,
+	Start,
+	Pause,
+	ToggleMute,
 }

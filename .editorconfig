@@ -34,11 +34,17 @@ end_of_line = lf
 indent_style = space
 indent_size = 4
 
-# JSON / YAML
-[*.{json,yml,yaml}]
+# JSON
+[*.json]
 end_of_line = crlf
 indent_style = tab
 indent_size = 4
+
+# YAML: 仕様上インデントにタブを使えないためスペースとする
+[*.{yml,yaml}]
+end_of_line = crlf
+indent_style = space
+indent_size = 2
 
 # Markdown
 [*.md]

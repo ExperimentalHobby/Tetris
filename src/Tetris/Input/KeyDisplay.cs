@@ -7,15 +7,15 @@ namespace Tetris.Input;
 /// </summary>
 public static class KeyDisplay
 {
-    /// <summary>表示用の文字列を返す。矢印キー・Enter・Space 以外は列挙値名をそのまま使う。</summary>
-    public static string ToDisplayString(Key key) => key switch
-    {
-        Key.Left => "←",
-        Key.Right => "→",
-        Key.Up => "↑",
-        Key.Down => "↓",
-        Key.Return => "Enter",
-        Key.Space => "Space",
-        _ => key.ToString(),
-    };
+	/// <summary>表示用の文字列を返す。矢印キー・Enter・Space 以外は列挙値名をそのまま使う。</summary>
+	public static string ToDisplayString(Key key) => key switch
+	{
+		Key.Left => "←",
+		Key.Right => "→",
+		Key.Up => "↑",
+		Key.Down => "↓",
+		Key.Return => "Enter",
+		Key.Space => "Space",
+		_ => key.ToString(),
+	};
 }
