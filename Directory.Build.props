@@ -1,23 +1,23 @@
 <Project>
 
-  <!-- 全プロジェクト共通のビルド設定。個別の設定は各 csproj 側に残す。 -->
-  <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
-    <!-- テストプロジェクトも WPF 参照が必要。本体の Tetromino が
-         System.Windows.Media.Color を公開しているため。 -->
-    <UseWPF>true</UseWPF>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+	<!-- 全プロジェクト共通のビルド設定。個別の設定は各 csproj 側に残す。 -->
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<!-- テストプロジェクトも WPF 参照が必要。本体の Tetromino が
+		     System.Windows.Media.Color を公開しているため。 -->
+		<UseWPF>true</UseWPF>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
 
-  <!-- 品質系。アナライザは Recommended まで有効にし、警告はビルドエラーとして扱う。 -->
-  <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <AnalysisLevel>latest</AnalysisLevel>
-    <AnalysisMode>Recommended</AnalysisMode>
-    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>
+	<!-- 品質系。アナライザは Recommended まで有効にし、警告はビルドエラーとして扱う。 -->
+	<PropertyGroup>
+		<LangVersion>latest</LangVersion>
+		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+		<AnalysisLevel>latest</AnalysisLevel>
+		<AnalysisMode>Recommended</AnalysisMode>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+	</PropertyGroup>
 
 </Project>
