@@ -16,7 +16,8 @@ public class GameViewModelTests : IDisposable
 	private GameViewModel CreateViewModel() => new(
 		new HighScoreService(_tempDir),
 		new AutoRepeatSettingsService(_tempDir),
-		new SoundEffectService(_tempDir));
+		new SoundEffectService(_tempDir),
+		new SoundSettingsService(_tempDir));
 
 	public void Dispose()
 	{
@@ -344,5 +345,36 @@ public class GameViewModelTests : IDisposable
 		}
 
 		Assert.True(vm.Engine.Current!.X < xAfterKeyDown);
+	}
+
+	/// <summary>
+	/// 音量の変更が永続化され、同じディレクトリを見る新しいインスタンスに引き継がれることを確認する。
+	/// パス条件: Volume を 0.25 にした後、新規生成した GameViewModel の Volume が 0.25。
+	/// </summary>
+	[Fact]
+	public void VolumeChangePersistsAcrossNewViewModelInstances()
+	{
+		var vm = CreateViewModel();
+		vm.Volume = 0.25;
+
+		var reloaded = CreateViewModel();
+
+		Assert.Equal(0.25, reloaded.Volume);
+	}
+
+	/// <summary>
+	/// ミュートの変更が永続化され、同じディレクトリを見る新しいインスタンスに引き継がれることを確認する。
+	/// パス条件: ToggleMuteCommand 実行後、新規生成した GameViewModel の IsMuted が true。
+	/// </summary>
+	[Fact]
+	public void MuteChangePersistsAcrossNewViewModelInstances()
+	{
+		var vm = CreateViewModel();
+		Assert.False(vm.IsMuted);
+
+		vm.ToggleMuteCommand.Execute(null);
+
+		var reloaded = CreateViewModel();
+		Assert.True(reloaded.IsMuted);
 	}
 }

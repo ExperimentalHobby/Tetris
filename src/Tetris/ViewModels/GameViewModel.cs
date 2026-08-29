@@ -19,6 +19,7 @@ public sealed class GameViewModel : ObservableObject
 	private AutoRepeatController _rightRepeat;
 	private readonly HighScoreService _highScoreService;
 	private readonly SoundEffectService _soundService;
+	private readonly SoundSettingsService _soundSettingsService;
 	private readonly Stopwatch _playStopwatch = new();
 
 	private bool _isStarted;
@@ -36,16 +37,20 @@ public sealed class GameViewModel : ObservableObject
 	private double _pps;
 	private double _lpm;
 
-	public GameViewModel() : this(new HighScoreService(), new AutoRepeatSettingsService(), new SoundEffectService())
+	public GameViewModel() : this(new HighScoreService(), new AutoRepeatSettingsService(), new SoundEffectService(), new SoundSettingsService())
 	{
 	}
 
 	/// <summary>テスト用: 各Serviceを注入してインスタンスを生成する（実ファイル・実音声への副作用を避けるため）。</summary>
-	internal GameViewModel(HighScoreService highScoreService, AutoRepeatSettingsService autoRepeatSettingsService, SoundEffectService soundService)
+	internal GameViewModel(HighScoreService highScoreService, AutoRepeatSettingsService autoRepeatSettingsService, SoundEffectService soundService, SoundSettingsService soundSettingsService)
 	{
 		_highScoreService = highScoreService;
 		_autoRepeatSettingsService = autoRepeatSettingsService;
 		_soundService = soundService;
+		_soundSettingsService = soundSettingsService;
+		var soundSettings = _soundSettingsService.Load();
+		_soundService.Volume = soundSettings.Volume;
+		_soundService.IsMuted = soundSettings.IsMuted;
 		_highScore = _highScoreService.Load();
 		AutoRepeatSettings = _autoRepeatSettingsService.Load();
 		_leftRepeat = new AutoRepeatController(AutoRepeatSettings.Das, AutoRepeatSettings.Arr);
@@ -120,6 +125,7 @@ public sealed class GameViewModel : ObservableObject
 			if (_soundService.Volume != value)
 			{
 				_soundService.Volume = value;
+				SaveSoundSettings();
 				OnPropertyChanged();
 			}
 		}
@@ -134,6 +140,7 @@ public sealed class GameViewModel : ObservableObject
 			if (_soundService.IsMuted != value)
 			{
 				_soundService.IsMuted = value;
+				SaveSoundSettings();
 				OnPropertyChanged();
 			}
 		}
@@ -326,6 +333,10 @@ public sealed class GameViewModel : ObservableObject
 	}
 
 	private void ToggleMute() => IsMuted = !IsMuted;
+
+	/// <summary>現在の音量・ミュート状態を永続化する（次回起動時に復元するため）。</summary>
+	private void SaveSoundSettings()
+		=> _soundSettingsService.Save(SoundSettings.Create(_soundService.Volume, _soundService.IsMuted));
 
 	private void TogglePause()
 	{
