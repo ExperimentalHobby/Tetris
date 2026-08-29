@@ -31,6 +31,15 @@ public partial class MainWindow : Window
 	/// <summary>空セルのグリッド線に使う共有ブラシ（Freeze 済みで全セルが同一インスタンスを参照する）。</summary>
 	private static readonly SolidColorBrush GridStrokeBrush = CreateFrozenBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
 
+	/// <summary>ブロックの枠線に使う共有ブラシ。</summary>
+	private static readonly SolidColorBrush CellStrokeBrush = CreateFrozenBrush(Color.FromArgb(80, 0, 0, 0));
+
+	/// <summary>色ごとの塗りブラシのキャッシュ。毎フレームの SolidColorBrush 生成を避けるため使い回す。</summary>
+	private static readonly Dictionary<Color, SolidColorBrush> FillBrushes = new();
+
+	/// <summary>盤面セル用 Rectangle のプール上限（固定ブロック 200 + ゴースト 4 + 現在ピース 4）。</summary>
+	private const int CellPoolSize = GameEngine.Rows * GameEngine.Columns + 8;
+
 	/// <summary>ライン消去アニメーションの総再生時間。</summary>
 	private static readonly TimeSpan LineClearDuration = TimeSpan.FromMilliseconds(480);
 
@@ -39,6 +48,12 @@ public partial class MainWindow : Window
 	private readonly DispatcherTimer _lineClearTimer = new() { Interval = LineClearDuration };
 	private readonly Random _random = new();
 	private readonly List<UIElement> _effectElements = new();
+
+	/// <summary>盤面セル描画用に使い回す Rectangle のプール（GameCanvas に常駐する）。</summary>
+	private readonly List<Rectangle> _cellPool = new(CellPoolSize);
+
+	/// <summary>現在のフレームで払い出し済みのプール要素数。</summary>
+	private int _usedCellCount;
 	private readonly KeyBindingService _keyBindingService = new();
 	private KeyBindings _keyBindings = KeyBindings.Default();
 	private int _buryRow;
@@ -58,6 +73,7 @@ public partial class MainWindow : Window
 		_buryTimer.Tick += OnBuryTick;
 		_lineClearTimer.Tick += OnLineClearFinished;
 		DrawGridLines();
+		InitializeCellPool();
 		PreviewKeyDown += OnPreviewKeyDown;
 		PreviewKeyUp += OnPreviewKeyUp;
 		// ウィンドウがフォーカスを失うと PreviewKeyUp が届かず、左右移動キーが押されたままの扱いになる。
@@ -455,7 +471,7 @@ public partial class MainWindow : Window
 
 		for (int x = 0; x < GameEngine.Columns; x++)
 		{
-			DrawCell(GameCanvas, x, _buryRow, BuryColor);
+			DrawBuryCell(x, _buryRow);
 		}
 		_buryRow--;
 	}
@@ -524,10 +540,57 @@ public partial class MainWindow : Window
 		return brush;
 	}
 
+	/// <summary>
+	/// 盤面セル用の Rectangle をあらかじめ確保して GameCanvas に常駐させる。
+	/// 後から追加される演出要素より必ず下の Z 順になるよう、初期化時に全数を確保しておく。
+	/// </summary>
+	private void InitializeCellPool()
+	{
+		for (int i = 0; i < CellPoolSize; i++)
+		{
+			var cell = new Rectangle
+			{
+				Width = CellSize,
+				Height = CellSize,
+				Stroke = CellStrokeBrush,
+				StrokeThickness = 1,
+				Visibility = Visibility.Collapsed,
+			};
+			_cellPool.Add(cell);
+			GameCanvas.Children.Add(cell);
+		}
+	}
+
+	/// <summary>指定色の塗りブラシをキャッシュから返す（無ければ生成して凍結し登録する）。</summary>
+	private static SolidColorBrush GetFillBrush(Color color)
+	{
+		if (!FillBrushes.TryGetValue(color, out var brush))
+		{
+			brush = CreateFrozenBrush(color);
+			FillBrushes[color] = brush;
+		}
+		return brush;
+	}
+
+	/// <summary>
+	/// プールから 1 つ払い出して盤面セルを描画する。
+	/// 払い出し順がそのまま Z 順（子要素インデックス順）になるため、
+	/// 固定ブロック → ゴースト → 現在ピース の順に呼ぶこと。
+	/// </summary>
+	private void DrawPooledCell(int col, int row, Color color)
+	{
+		var cell = _cellPool[_usedCellCount++];
+		cell.Fill = GetFillBrush(color);
+		cell.Visibility = Visibility.Visible;
+		Canvas.SetLeft(cell, col * CellSize);
+		Canvas.SetTop(cell, row * CellSize);
+	}
+
 	private void DrawBoard()
 	{
 		var engine = _viewModel.Engine;
-		GameCanvas.Children.Clear();
+		// プールを先頭から払い出し直す（Children は操作しない）。
+		_usedCellCount = 0;
 
 		// 固定済みブロック
 		for (int y = 0; y < GameEngine.Rows; y++)
@@ -537,7 +600,7 @@ public partial class MainWindow : Window
 				var type = engine.Grid[y, x];
 				if (type is not null)
 				{
-					DrawCell(GameCanvas, x, y, Tetromino.Colors[type.Value]);
+					DrawPooledCell(x, y, Tetromino.Colors[type.Value]);
 				}
 			}
 		}
@@ -553,8 +616,7 @@ public partial class MainWindow : Window
 				int gy = by + offset;
 				if (gy >= 0)
 				{
-					DrawCell(GameCanvas, bx, gy,
-						Color.FromArgb(60, ghostColor.R, ghostColor.G, ghostColor.B));
+					DrawPooledCell(bx, gy, Color.FromArgb(60, ghostColor.R, ghostColor.G, ghostColor.B));
 				}
 			}
 
@@ -562,9 +624,15 @@ public partial class MainWindow : Window
 			{
 				if (by >= 0)
 				{
-					DrawCell(GameCanvas, bx, by, Tetromino.Colors[current.Type]);
+					DrawPooledCell(bx, by, Tetromino.Colors[current.Type]);
 				}
 			}
+		}
+
+		// このフレームで使わなかったプール要素を隠す。
+		for (int i = _usedCellCount; i < _cellPool.Count; i++)
+		{
+			_cellPool[i].Visibility = Visibility.Collapsed;
 		}
 	}
 
@@ -622,9 +690,23 @@ public partial class MainWindow : Window
 		}
 	}
 
-	private static void DrawCell(Canvas canvas, int col, int row, Color color)
+	/// <summary>
+	/// ゲームオーバー演出の埋没セルを描画する。プールとは別に生成し、演出要素として追跡する
+	/// （DrawBoard が Children.Clear() しなくなったため、リスタート時に確実に取り除く必要がある）。
+	/// </summary>
+	private void DrawBuryCell(int col, int row)
 	{
-		DrawRect(canvas, col * CellSize, row * CellSize, CellSize, color);
+		var rect = new Rectangle
+		{
+			Width = CellSize,
+			Height = CellSize,
+			Fill = GetFillBrush(BuryColor),
+			Stroke = CellStrokeBrush,
+			StrokeThickness = 1,
+		};
+		Canvas.SetLeft(rect, col * CellSize);
+		Canvas.SetTop(rect, row * CellSize);
+		AddEffectElement(rect);
 	}
 
 	private static void DrawRect(Canvas canvas, double x, double y, double size, Color color)
@@ -633,8 +715,8 @@ public partial class MainWindow : Window
 		{
 			Width = size,
 			Height = size,
-			Fill = new SolidColorBrush(color),
-			Stroke = new SolidColorBrush(Color.FromArgb(80, 0, 0, 0)),
+			Fill = GetFillBrush(color),
+			Stroke = CellStrokeBrush,
 			StrokeThickness = 1,
 		};
 		Canvas.SetLeft(rect, x);
