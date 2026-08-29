@@ -20,6 +20,7 @@ public class KeyBindingServiceTests : IDisposable
         {
             Directory.Delete(_tempDir, recursive: true);
         }
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -27,7 +28,7 @@ public class KeyBindingServiceTests : IDisposable
     /// パス条件: Load() の Rotate が既定値 Key.Up。
     /// </summary>
     [Fact]
-    public void Load_WhenFileNotExists_ReturnsDefaultBindings()
+    public void LoadWhenFileNotExistsReturnsDefaultBindings()
     {
         var service = CreateService();
 
@@ -41,7 +42,7 @@ public class KeyBindingServiceTests : IDisposable
     /// パス条件: Rotate を Key.X に変更して Save した後、Load() の Rotate が Key.X。
     /// </summary>
     [Fact]
-    public void Load_AfterSave_ReturnsSavedBindings()
+    public void LoadAfterSaveReturnsSavedBindings()
     {
         var service = CreateService();
         var bindings = KeyBindings.Default();

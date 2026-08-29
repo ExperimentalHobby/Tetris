@@ -12,7 +12,7 @@ public class AutoRepeatSettingsTests
     /// パス条件: Default().Das/Arr が AutoRepeatController.DefaultDas/DefaultArr と等しい。
     /// </summary>
     [Fact]
-    public void Default_MatchesAutoRepeatControllerDefaults()
+    public void DefaultMatchesAutoRepeatControllerDefaults()
     {
         var settings = AutoRepeatSettings.Default();
 
@@ -25,7 +25,7 @@ public class AutoRepeatSettingsTests
     /// パス条件: TryCreate(200ms, 30ms) が true を返し、settings.Das/Arr がその値になる。
     /// </summary>
     [Fact]
-    public void TryCreate_WithValidValues_ReturnsTrueAndSettings()
+    public void TryCreateWithValidValuesReturnsTrueAndSettings()
     {
         bool result = AutoRepeatSettings.TryCreate(
             TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(30),
@@ -42,7 +42,7 @@ public class AutoRepeatSettingsTests
     /// パス条件: TryCreate(200ms, 0ms) が false を返し、settings は null、error は非null。
     /// </summary>
     [Fact]
-    public void TryCreate_WithZeroArr_ReturnsFalseWithError()
+    public void TryCreateWithZeroArrReturnsFalseWithError()
     {
         bool result = AutoRepeatSettings.TryCreate(
             TimeSpan.FromMilliseconds(200), TimeSpan.Zero,
@@ -58,7 +58,7 @@ public class AutoRepeatSettingsTests
     /// パス条件: TryCreate(-1ms, 30ms) が false を返し、settings は null、error は非null。
     /// </summary>
     [Fact]
-    public void TryCreate_WithNegativeDas_ReturnsFalseWithError()
+    public void TryCreateWithNegativeDasReturnsFalseWithError()
     {
         bool result = AutoRepeatSettings.TryCreate(
             TimeSpan.FromMilliseconds(-1), TimeSpan.FromMilliseconds(30),

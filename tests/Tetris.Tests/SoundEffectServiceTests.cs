@@ -13,7 +13,7 @@ public class SoundEffectServiceTests
     /// パス条件: 空ディレクトリを指定しても全メソッドが正常終了する。
     /// </summary>
     [Fact]
-    public void PlayMethods_WhenFilesNotExist_DoNotThrow()
+    public void PlayMethodsWhenFilesNotExistDoNotThrow()
     {
         var emptyDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         var service = new SoundEffectService(emptyDir);
@@ -29,7 +29,7 @@ public class SoundEffectServiceTests
     /// 新規インスタンスの Volume が 1.0（最大）であることを確認する。
     /// </summary>
     [Fact]
-    public void Volume_DefaultsToOne()
+    public void VolumeDefaultsToOne()
     {
         var service = new SoundEffectService(Path.GetTempPath());
 
@@ -40,7 +40,7 @@ public class SoundEffectServiceTests
     /// Volume に範囲外の値を設定すると 0.0〜1.0 にクランプされることを確認する。
     /// </summary>
     [Fact]
-    public void Volume_ClampsToValidRange()
+    public void VolumeClampsToValidRange()
     {
         var service = new SoundEffectService(Path.GetTempPath());
 
@@ -55,7 +55,7 @@ public class SoundEffectServiceTests
     /// 新規インスタンスの IsMuted が false（ミュートされていない）であることを確認する。
     /// </summary>
     [Fact]
-    public void IsMuted_DefaultsToFalse()
+    public void IsMutedDefaultsToFalse()
     {
         var service = new SoundEffectService(Path.GetTempPath());
 
@@ -67,7 +67,7 @@ public class SoundEffectServiceTests
     /// 各 Play メソッドが例外を投げないことを確認する。
     /// </summary>
     [Fact]
-    public void PlayMethods_AfterChangingVolumeAndMute_DoNotThrow()
+    public void PlayMethodsAfterChangingVolumeAndMuteDoNotThrow()
     {
         var emptyDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         var service = new SoundEffectService(emptyDir)

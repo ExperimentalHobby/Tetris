@@ -13,7 +13,7 @@ public class KeyBindingsTests
     /// パス条件: Default の各操作が旧 MainWindow.xaml の InputBindings と同じキーを返す。
     /// </summary>
     [Fact]
-    public void Default_MatchesLegacyHardcodedKeys()
+    public void DefaultMatchesLegacyHardcodedKeys()
     {
         var bindings = KeyBindings.Default();
 
@@ -34,7 +34,7 @@ public class KeyBindingsTests
     /// パス条件: TrySetKey(Rotate, Key.X) の後、GetKey(Rotate) が Key.X を返す。
     /// </summary>
     [Fact]
-    public void TrySetKey_WithUnusedKey_UpdatesBinding()
+    public void TrySetKeyWithUnusedKeyUpdatesBinding()
     {
         var bindings = KeyBindings.Default();
 
@@ -49,7 +49,7 @@ public class KeyBindingsTests
     /// Rotate は Hold の元のキー(Key.C) に、Hold は Key.Up になる。
     /// </summary>
     [Fact]
-    public void TrySetKey_WithKeyAlreadyUsedByAnotherAction_SwapsBindings()
+    public void TrySetKeyWithKeyAlreadyUsedByAnotherActionSwapsBindings()
     {
         var bindings = KeyBindings.Default();
 
@@ -64,7 +64,7 @@ public class KeyBindingsTests
     /// パス条件: ActionFor(Key.Up) が GameAction.Rotate を返す。
     /// </summary>
     [Fact]
-    public void ActionFor_WithBoundKey_ReturnsMatchingAction()
+    public void ActionForWithBoundKeyReturnsMatchingAction()
     {
         var bindings = KeyBindings.Default();
 
@@ -78,7 +78,7 @@ public class KeyBindingsTests
     /// パス条件: ActionFor(Key.F1) が null。
     /// </summary>
     [Fact]
-    public void ActionFor_WithUnboundKey_ReturnsNull()
+    public void ActionForWithUnboundKeyReturnsNull()
     {
         var bindings = KeyBindings.Default();
 

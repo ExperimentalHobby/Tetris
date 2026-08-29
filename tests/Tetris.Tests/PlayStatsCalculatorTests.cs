@@ -12,7 +12,7 @@ public class PlayStatsCalculatorTests
     /// パス条件: PiecesPerSecond(10, TimeSpan.Zero) が 0。
     /// </summary>
     [Fact]
-    public void PiecesPerSecond_WithZeroElapsed_ReturnsZero()
+    public void PiecesPerSecondWithZeroElapsedReturnsZero()
     {
         double pps = PlayStatsCalculator.PiecesPerSecond(10, TimeSpan.Zero);
 
@@ -24,7 +24,7 @@ public class PlayStatsCalculatorTests
     /// パス条件: 10ピース/5秒 で PPS=2.0。
     /// </summary>
     [Fact]
-    public void PiecesPerSecond_WithElapsedTime_ReturnsCorrectRate()
+    public void PiecesPerSecondWithElapsedTimeReturnsCorrectRate()
     {
         double pps = PlayStatsCalculator.PiecesPerSecond(10, TimeSpan.FromSeconds(5));
 
@@ -36,7 +36,7 @@ public class PlayStatsCalculatorTests
     /// パス条件: LinesPerMinute(6, TimeSpan.Zero) が 0。
     /// </summary>
     [Fact]
-    public void LinesPerMinute_WithZeroElapsed_ReturnsZero()
+    public void LinesPerMinuteWithZeroElapsedReturnsZero()
     {
         double lpm = PlayStatsCalculator.LinesPerMinute(6, TimeSpan.Zero);
 
@@ -48,7 +48,7 @@ public class PlayStatsCalculatorTests
     /// パス条件: 6ライン/30秒 で LPM=12.0（1分あたり換算）。
     /// </summary>
     [Fact]
-    public void LinesPerMinute_WithElapsedTime_ReturnsCorrectRate()
+    public void LinesPerMinuteWithElapsedTimeReturnsCorrectRate()
     {
         double lpm = PlayStatsCalculator.LinesPerMinute(6, TimeSpan.FromSeconds(30));
 

@@ -18,6 +18,7 @@ public class HighScoreServiceTests : IDisposable
         {
             Directory.Delete(_tempDir, recursive: true);
         }
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -25,7 +26,7 @@ public class HighScoreServiceTests : IDisposable
     /// パス条件: Load() が 0 を返す。
     /// </summary>
     [Fact]
-    public void Load_WhenFileNotExists_ReturnsZero()
+    public void LoadWhenFileNotExistsReturnsZero()
     {
         var service = CreateService();
 
@@ -39,7 +40,7 @@ public class HighScoreServiceTests : IDisposable
     /// パス条件: Save(500) の後 Load() が 500 を返す。
     /// </summary>
     [Fact]
-    public void Load_AfterSave_ReturnsSavedScore()
+    public void LoadAfterSaveReturnsSavedScore()
     {
         var service = CreateService();
         service.Save(500);
@@ -54,7 +55,7 @@ public class HighScoreServiceTests : IDisposable
     /// パス条件: Save(100) → Save(800) の後 Load() が 800 を返す。
     /// </summary>
     [Fact]
-    public void Load_AfterMultipleSaves_ReturnsLastSaved()
+    public void LoadAfterMultipleSavesReturnsLastSaved()
     {
         var service = CreateService();
         service.Save(100);
@@ -70,7 +71,7 @@ public class HighScoreServiceTests : IDisposable
     /// パス条件: 例外を投げず、Load() が保存値を返す。
     /// </summary>
     [Fact]
-    public void Save_CreatesDirectoryIfNotExists()
+    public void SaveCreatesDirectoryIfNotExists()
     {
         var service = new HighScoreService(Path.Combine(_tempDir, "nested", "dir"));
         service.Save(300);

@@ -24,6 +24,7 @@ public class GameViewModelTests : IDisposable
         {
             Directory.Delete(_tempDir, recursive: true);
         }
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -31,7 +32,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: StartCommand を実行する前は CanExecute が false。
     /// </summary>
     [Fact]
-    public void MoveLeftCommand_BeforeStart_CannotExecute()
+    public void MoveLeftCommandBeforeStartCannotExecute()
     {
         var vm = CreateViewModel();
 
@@ -43,7 +44,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: StartCommand 実行後、MoveLeftCommand/RotateCommand/HardDropCommand の CanExecute が true。
     /// </summary>
     [Fact]
-    public void MoveLeftCommand_AfterStart_CanExecute()
+    public void MoveLeftCommandAfterStartCanExecute()
     {
         var vm = CreateViewModel();
 
@@ -59,7 +60,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: 開始後に PauseCommand を実行すると、IsPaused が true になり MoveLeftCommand が非活性になる。
     /// </summary>
     [Fact]
-    public void PauseCommand_WhilePlaying_DisablesPlayCommands()
+    public void PauseCommandWhilePlayingDisablesPlayCommands()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);
@@ -75,7 +76,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: StartCommand を呼ぶ前に PauseCommand.Execute しても IsPaused は false のまま。
     /// </summary>
     [Fact]
-    public void PauseCommand_BeforeStart_DoesNothing()
+    public void PauseCommandBeforeStartDoesNothing()
     {
         var vm = CreateViewModel();
 
@@ -89,7 +90,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: 2 回 PauseCommand を実行すると IsPaused が false に戻り、MoveLeftCommand が活性化する。
     /// </summary>
     [Fact]
-    public void PauseCommand_ExecutedTwice_ResumesPlay()
+    public void PauseCommandExecutedTwiceResumesPlay()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);
@@ -106,7 +107,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: StartCommand.Execute() 呼び出しで GameStarted が 1 回発火する。
     /// </summary>
     [Fact]
-    public void Start_RaisesGameStartedEvent()
+    public void StartRaisesGameStartedEvent()
     {
         var vm = CreateViewModel();
         int raisedCount = 0;
@@ -122,7 +123,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: MoveRightCommand.Execute() 呼び出しで StateChanged が発火する。
     /// </summary>
     [Fact]
-    public void MoveRightCommand_RaisesStateChangedEvent()
+    public void MoveRightCommandRaisesStateChangedEvent()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);
@@ -139,7 +140,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: Engine のテストシームで満杯行を作り固定した後、RefreshForTest() で LinesClearing が発火する。
     /// </summary>
     [Fact]
-    public void LineClear_Pending_RaisesLinesClearingEvent()
+    public void LineClearPendingRaisesLinesClearingEvent()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);
@@ -162,7 +163,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: スポーン位置を塞いだ状態でライン消去を伴わない固定をすると、RefreshForTest() で GameOver が発火する。
     /// </summary>
     [Fact]
-    public void GameOver_WhenNextPieceCannotSpawn_RaisesGameOverEvent()
+    public void GameOverWhenNextPieceCannotSpawnRaisesGameOverEvent()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);
@@ -192,7 +193,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: 1ライン消去で得点した後にゲームオーバーにすると、初回（ハイスコア0）なので NewRecord が発火する。
     /// </summary>
     [Fact]
-    public void GameOver_WithNewHighScore_RaisesNewRecordEvent()
+    public void GameOverWithNewHighScoreRaisesNewRecordEvent()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);
@@ -232,7 +233,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: 開始直後（保留なし）に CompleteLineClear() を呼んでも Score は 0 のまま。
     /// </summary>
     [Fact]
-    public void CompleteLineClear_WithoutPendingClear_DoesNothing()
+    public void CompleteLineClearWithoutPendingClearDoesNothing()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);
@@ -247,7 +248,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: 満杯行を作って固定した後 CompleteLineClear() を呼ぶと IsClearing が false になり Score が加算される。
     /// </summary>
     [Fact]
-    public void CompleteLineClear_WithPendingClear_CommitsAndUpdatesScore()
+    public void CompleteLineClearWithPendingClearCommitsAndUpdatesScore()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);
@@ -270,7 +271,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: Das=200ms/Arr=30ms を適用すると AutoRepeatSettings がその値になる。
     /// </summary>
     [Fact]
-    public void ApplyAutoRepeatSettings_UpdatesAutoRepeatSettingsProperty()
+    public void ApplyAutoRepeatSettingsUpdatesAutoRepeatSettingsProperty()
     {
         var vm = CreateViewModel();
         AutoRepeatSettings.TryCreate(TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(30), out var settings, out _);
@@ -287,7 +288,7 @@ public class GameViewModelTests : IDisposable
     /// パス条件: 保存後に新規生成した GameViewModel の AutoRepeatSettings が保存値と一致する。
     /// </summary>
     [Fact]
-    public void ApplyAutoRepeatSettings_PersistsAcrossNewViewModelInstances()
+    public void ApplyAutoRepeatSettingsPersistsAcrossNewViewModelInstances()
     {
         var vm = CreateViewModel();
         AutoRepeatSettings.TryCreate(TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(30), out var settings, out _);
@@ -306,7 +307,7 @@ public class GameViewModelTests : IDisposable
     /// 入力 Tick を進めてもピースが移動しない。
     /// </summary>
     [Fact]
-    public void ReleaseDirectionKeys_AfterKeyDown_StopsAutoRepeat()
+    public void ReleaseDirectionKeysAfterKeyDownStopsAutoRepeat()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);
@@ -325,12 +326,12 @@ public class GameViewModelTests : IDisposable
     /// <summary>
     /// 対照テスト: ReleaseDirectionKeys() を呼ばなければ、DAS 経過後の入力 Tick で
     /// オートリピートによる移動が発生することを確認する。
-    /// （ReleaseDirectionKeys_AfterKeyDown_StopsAutoRepeat が、そもそもリピートの起きない
+    /// （ReleaseDirectionKeysAfterKeyDownStopsAutoRepeat が、そもそもリピートの起きない
     /// 条件で通っているのではないことを保証するためのテスト。）
     /// パス条件: MoveLeftKeyDown 後に解除せず入力 Tick を進めると、押下時の位置より更に左へ動く。
     /// </summary>
     [Fact]
-    public void AutoRepeat_WithoutRelease_ContinuesMovingAfterDas()
+    public void AutoRepeatWithoutReleaseContinuesMovingAfterDas()
     {
         var vm = CreateViewModel();
         vm.StartCommand.Execute(null);

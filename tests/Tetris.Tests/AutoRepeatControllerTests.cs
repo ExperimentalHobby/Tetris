@@ -12,7 +12,7 @@ public class AutoRepeatControllerTests
     /// パス条件: arr: TimeSpan.Zero でコンストラクタを呼ぶと ArgumentOutOfRangeException を投げる。
     /// </summary>
     [Fact]
-    public void Constructor_WithZeroArr_ThrowsArgumentOutOfRangeException()
+    public void ConstructorWithZeroArrThrowsArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new AutoRepeatController(arr: TimeSpan.Zero));
     }
@@ -22,7 +22,7 @@ public class AutoRepeatControllerTests
     /// パス条件: KeyDown を呼ばずに Advance すると 0。
     /// </summary>
     [Fact]
-    public void Advance_BeforeKeyDown_ReturnsZero()
+    public void AdvanceBeforeKeyDownReturnsZero()
     {
         var controller = new AutoRepeatController();
 
@@ -36,7 +36,7 @@ public class AutoRepeatControllerTests
     /// パス条件: KeyDown 後に DAS（既定 170ms）未満の時間を進めても 0。
     /// </summary>
     [Fact]
-    public void Advance_ImmediatelyAfterKeyDown_BeforeDas_ReturnsZero()
+    public void AdvanceImmediatelyAfterKeyDownBeforeDasReturnsZero()
     {
         var controller = new AutoRepeatController();
         controller.KeyDown();
@@ -51,7 +51,7 @@ public class AutoRepeatControllerTests
     /// パス条件: DAS ちょうどの時間を進めると 1 回以上のリピートが返る。
     /// </summary>
     [Fact]
-    public void Advance_AfterDasElapsed_ReturnsAtLeastOneRepeat()
+    public void AdvanceAfterDasElapsedReturnsAtLeastOneRepeat()
     {
         var controller = new AutoRepeatController();
         controller.KeyDown();
@@ -66,7 +66,7 @@ public class AutoRepeatControllerTests
     /// パス条件: DAS + ARR*3 分の時間を一度に進めると 4 回（初回 + 3 回）以上のリピートが返る。
     /// </summary>
     [Fact]
-    public void Advance_MultipleArrIntervalsElapsed_ReturnsMultipleRepeats()
+    public void AdvanceMultipleArrIntervalsElapsedReturnsMultipleRepeats()
     {
         var controller = new AutoRepeatController();
         controller.KeyDown();
@@ -82,7 +82,7 @@ public class AutoRepeatControllerTests
     /// パス条件: リピート中に KeyUp すると、以後の Advance は 0。
     /// </summary>
     [Fact]
-    public void KeyUp_StopsFurtherRepeats()
+    public void KeyUpStopsFurtherRepeats()
     {
         var controller = new AutoRepeatController();
         controller.KeyDown();
@@ -99,7 +99,7 @@ public class AutoRepeatControllerTests
     /// パス条件: リピート中に KeyDown し直すと、DAS 未満の経過では 0 を返す。
     /// </summary>
     [Fact]
-    public void KeyDown_ResetsPreviousState()
+    public void KeyDownResetsPreviousState()
     {
         var controller = new AutoRepeatController();
         controller.KeyDown();

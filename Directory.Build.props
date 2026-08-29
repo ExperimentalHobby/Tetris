@@ -10,14 +10,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <!-- 品質系。AnalysisMode は Default を採用する。
-       Recommended にすると CA1707（識別子にアンダースコアを含めない）が
-       xUnit のテスト命名規約 Xxx_Yyy_Zzz と衝突し 228 件の警告が出るため。 -->
+  <!-- 品質系。アナライザは Recommended まで有効にし、警告はビルドエラーとして扱う。 -->
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
-    <AnalysisMode>Default</AnalysisMode>
+    <AnalysisMode>Recommended</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>

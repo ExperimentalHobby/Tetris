@@ -13,7 +13,7 @@ public class TetrominoTests
     /// パス条件: すべての <see cref="TetrominoType"/> が <see cref="Tetromino.Colors"/> のキーに存在する。
     /// </summary>
     [Fact]
-    public void Colors_DefinesEveryTetrominoType()
+    public void ColorsDefinesEveryTetrominoType()
     {
         foreach (TetrominoType type in System.Enum.GetValues<TetrominoType>())
         {
@@ -26,7 +26,7 @@ public class TetrominoTests
     /// パス条件: 回転後の <c>Cells</c> が回転前と一致する。
     /// </summary>
     [Fact]
-    public void Rotated_OPiece_KeepsSameShape()
+    public void RotatedOPieceKeepsSameShape()
     {
         var o = new Tetromino(TetrominoType.O);
         var rotated = o.Rotated();
@@ -39,7 +39,7 @@ public class TetrominoTests
     /// パス条件: 4 回回転後の <c>Cells</c> が初期形状と一致する。
     /// </summary>
     [Fact]
-    public void Rotated_FourTimes_ReturnsToOriginalShape()
+    public void RotatedFourTimesReturnsToOriginalShape()
     {
         var piece = new Tetromino(TetrominoType.T);
         var original = (bool[,])piece.Cells.Clone();
@@ -54,7 +54,7 @@ public class TetrominoTests
     /// パス条件: 0→1→2→3→0 の順に変化する。
     /// </summary>
     [Fact]
-    public void Rotated_UpdatesRotationState()
+    public void RotatedUpdatesRotationState()
     {
         var piece = new Tetromino(TetrominoType.T);
         Assert.Equal(0, piece.RotationState);
@@ -77,7 +77,7 @@ public class TetrominoTests
     /// パス条件: 0→3→2→1→0 の順に変化する。
     /// </summary>
     [Fact]
-    public void RotatedCcw_UpdatesRotationState()
+    public void RotatedCcwUpdatesRotationState()
     {
         var piece = new Tetromino(TetrominoType.T);
 
@@ -93,7 +93,7 @@ public class TetrominoTests
     /// パス条件: 回転後の <c>Cells</c> が期待する時計回り姿勢と一致する。
     /// </summary>
     [Fact]
-    public void Rotated_TPiece_MatchesClockwiseRotation()
+    public void RotatedTPieceMatchesClockwiseRotation()
     {
         // T の初期姿勢（3x3）:
         //   . X .
@@ -120,7 +120,7 @@ public class TetrominoTests
     /// パス条件: 回転後の <c>Cells</c> が期待する反時計回り姿勢と一致する。
     /// </summary>
     [Fact]
-    public void RotatedCcw_TPiece_MatchesCounterClockwiseRotation()
+    public void RotatedCcwTPieceMatchesCounterClockwiseRotation()
     {
         // T の初期姿勢（3x3）:
         //   . X .
@@ -147,7 +147,7 @@ public class TetrominoTests
     /// パス条件: 4 回反時計回転後の <c>Cells</c> が初期形状と一致する。
     /// </summary>
     [Fact]
-    public void RotatedCcw_FourTimes_ReturnsToOriginalShape()
+    public void RotatedCcwFourTimesReturnsToOriginalShape()
     {
         var piece = new Tetromino(TetrominoType.T);
         var original = (bool[,])piece.Cells.Clone();
@@ -162,7 +162,7 @@ public class TetrominoTests
     /// パス条件: 反時計回転後の <c>Cells</c> が回転前と一致する。
     /// </summary>
     [Fact]
-    public void RotatedCcw_OPiece_KeepsSameShape()
+    public void RotatedCcwOPieceKeepsSameShape()
     {
         var o = new Tetromino(TetrominoType.O);
         var rotated = o.RotatedCcw();
@@ -175,7 +175,7 @@ public class TetrominoTests
     /// パス条件: T ピースを (4,5) に置いたときの占有セルが期待値と一致する。
     /// </summary>
     [Fact]
-    public void Blocks_AreOffsetByPosition()
+    public void BlocksAreOffsetByPosition()
     {
         var t = new Tetromino(TetrominoType.T) { X = 4, Y = 5 };
 
@@ -196,7 +196,7 @@ public class TetrominoTests
     /// パス条件: クローンの位置を変更しても元の位置は変わらず、形状は一致する。
     /// </summary>
     [Fact]
-    public void Clone_IsIndependentCopy()
+    public void CloneIsIndependentCopy()
     {
         var piece = new Tetromino(TetrominoType.L) { X = 2, Y = 3 };
         var clone = piece.Clone();
