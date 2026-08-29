@@ -56,6 +56,10 @@ public partial class MainWindow : Window
         _lineClearTimer.Tick += OnLineClearFinished;
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewKeyUp += OnPreviewKeyUp;
+        // ウィンドウがフォーカスを失うと PreviewKeyUp が届かず、左右移動キーが押されたままの扱いになる。
+        // 復帰後にピースが動き続けるのを防ぐため、非アクティブ化の時点で押下状態を解除する。
+        // モーダルダイアログ（KEY CONFIG / DAS/ARR CONFIG）を開いた場合もここを通る。
+        Deactivated += (_, _) => _viewModel.ReleaseDirectionKeys();
         Render();
     }
 
