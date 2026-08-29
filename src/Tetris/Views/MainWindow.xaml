@@ -82,6 +82,10 @@
 				Background="#181825"
 				VerticalAlignment="Center">
 			<Grid>
+				<!-- 変化しない空セルのグリッド線。GameCanvas とは別レイヤーにして初回のみ描画する
+				     （毎フレームの Children 操作対象から外し、200 個の Rectangle の再生成を避けるため）。 -->
+				<Canvas x:Name="GridCanvas" Width="300" Height="600" ClipToBounds="True" />
+
 				<Canvas x:Name="GameCanvas" Width="300" Height="600" ClipToBounds="True" />
 
 				<!-- ポーズ中に盤面を隠すマスク（次の一手を考える時間にならないよう、盤面のブロック等が透けて見えない濃さにする）。
