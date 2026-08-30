@@ -158,6 +158,21 @@
 			<TextBlock Text="LEVEL" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
 			<TextBlock Text="{Binding Level}" Foreground="#F9E2AF" FontSize="24" FontWeight="Bold" />
 
+			<!-- コンボ / Back-to-Back のバッジ。成立しているときだけ表示する。
+			     常時表示にするとサイドパネルが縦に伸びてウィンドウが画面からはみ出すため（Issue #51 の経緯）。 -->
+			<!-- マージンは StackPanel ではなく各 Border に付ける。
+			     両方が Collapsed のとき StackPanel の高さが 0 になり、余白も生じないようにするため。 -->
+			<StackPanel Orientation="Horizontal">
+				<Border Background="#F9E2AF" CornerRadius="3" Padding="6,2" Margin="0,10,0,0"
+				        Visibility="{Binding IsComboActive, Converter={StaticResource BoolToVis}}">
+					<TextBlock Text="{Binding ComboText}" Foreground="#11111B" FontSize="13" FontWeight="Bold" />
+				</Border>
+				<Border Background="#F5C2E7" CornerRadius="3" Padding="6,2" Margin="6,10,0,0"
+				        Visibility="{Binding IsBackToBack, Converter={StaticResource BoolToVis}}">
+					<TextBlock Text="B2B" Foreground="#11111B" FontSize="13" FontWeight="Bold" />
+				</Border>
+			</StackPanel>
+
 			<!-- プレイ中も逐次更新される統計（TIME/PPS/LPM）。ゲームオーバー時の最終サマリーはオーバーレイ側に別途表示する。 -->
 			<TextBlock Text="TIME" Foreground="#CDD6F4" FontSize="16" FontWeight="Bold" Margin="0,12,0,2" />
 			<TextBlock Text="{Binding PlayTime, Mode=OneWay, StringFormat={}{0:hh\\:mm\\:ss}}"
