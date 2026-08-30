@@ -377,4 +377,250 @@ public class GameViewModelTests : IDisposable
 		var reloaded = CreateViewModel();
 		Assert.True(reloaded.IsMuted);
 	}
+
+	/// <summary>
+	/// 重力タイマーの Tick でピースが 1 段落下し、ソフトドロップと違って加点されないことを確認する。
+	/// パス条件: AdvanceGravityForTest() 呼び出しで Y が 1 増え、Score は 0 のまま。
+	/// </summary>
+	[Fact]
+	public void GravityTickMovesPieceDownWithoutScoring()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		int beforeY = vm.Engine.Current!.Y;
+
+		vm.AdvanceGravityForTest();
+
+		Assert.Equal(beforeY + 1, vm.Engine.Current!.Y);
+		Assert.Equal(0, vm.Score);
+	}
+
+	/// <summary>
+	/// ポーズ中は重力 Tick でピースが落下しないことを確認する。
+	/// パス条件: ポーズ後に AdvanceGravityForTest() を呼んでも Y が変わらない。
+	/// </summary>
+	[Fact]
+	public void GravityTickWhilePausedDoesNothing()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		vm.PauseCommand.Execute(null);
+		int beforeY = vm.Engine.Current!.Y;
+
+		vm.AdvanceGravityForTest();
+
+		Assert.Equal(beforeY, vm.Engine.Current!.Y);
+	}
+
+	/// <summary>
+	/// MoveLeftCommand / MoveRightCommand がエンジンのピースを実際に動かすことを確認する。
+	/// パス条件: 左に 1 マス動いた後、右に動かすと元の位置に戻る。
+	/// </summary>
+	[Fact]
+	public void MoveCommandsMovePieceHorizontally()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		int startX = vm.Engine.Current!.X;
+
+		vm.MoveLeftCommand.Execute(null);
+		Assert.Equal(startX - 1, vm.Engine.Current!.X);
+
+		vm.MoveRightCommand.Execute(null);
+		Assert.Equal(startX, vm.Engine.Current!.X);
+	}
+
+	/// <summary>
+	/// RotateCommand / RotateCcwCommand が回転姿勢を進める・戻すことを確認する。
+	/// パス条件: 時計回りで RotationState が +1、反時計回りで元に戻る。
+	/// </summary>
+	[Fact]
+	public void RotateCommandsChangeRotationState()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		// O ピースは回転しても形が変わらないが RotationState は進むため、判定に使える。
+		vm.Engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 4, Y = 5 });
+		int before = vm.Engine.Current!.RotationState;
+
+		vm.RotateCommand.Execute(null);
+		Assert.Equal((before + 1) % 4, vm.Engine.Current!.RotationState);
+
+		vm.RotateCcwCommand.Execute(null);
+		Assert.Equal(before, vm.Engine.Current!.RotationState);
+	}
+
+	/// <summary>
+	/// SoftDropCommand で 1 段落下し 1 点加算されることを確認する。
+	/// パス条件: 実行後に Y が 1 増え、Score が 1 になる。
+	/// </summary>
+	[Fact]
+	public void SoftDropCommandMovesDownAndScores()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		int beforeY = vm.Engine.Current!.Y;
+
+		vm.SoftDropCommand.Execute(null);
+
+		Assert.Equal(beforeY + 1, vm.Engine.Current!.Y);
+		Assert.Equal(1, vm.Score);
+	}
+
+	/// <summary>
+	/// HardDropCommand でピースが着地・固定され、落下距離 × 2 点が加算されることを確認する。
+	/// パス条件: 空の盤面で最上段から落とすと Score が (落下距離 × 2) になり、盤面にブロックが固定される。
+	/// </summary>
+	[Fact]
+	public void HardDropCommandLocksPieceAndScores()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		vm.Engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
+		int ghostY = vm.Engine.GhostY();
+		int distance = ghostY - vm.Engine.Current!.Y;
+
+		vm.HardDropCommand.Execute(null);
+
+		Assert.Equal(distance * 2, vm.Score);
+		Assert.Equal(TetrominoType.O, vm.Engine.Grid[GameEngine.Rows - 1, 4]);
+	}
+
+	/// <summary>
+	/// HoldCommand で現在のピースがホールドされ、1 ピースにつき 1 回だけ有効なことを確認する。
+	/// パス条件: 1 回目でホールドされ、2 回目は保管内容が変わらない。
+	/// </summary>
+	[Fact]
+	public void HoldCommandStoresPieceOncePerPiece()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		var firstType = vm.Engine.Current!.Type;
+		Assert.Null(vm.Engine.HeldType);
+
+		vm.HoldCommand.Execute(null);
+		Assert.Equal(firstType, vm.Engine.HeldType);
+
+		vm.HoldCommand.Execute(null); // 設置するまで 2 回目は無効
+		Assert.Equal(firstType, vm.Engine.HeldType);
+	}
+
+	/// <summary>
+	/// 右移動キーの押下でも 1 マス移動し、押しっぱなしのリピートが働くことを確認する。
+	/// パス条件: MoveRightKeyDown で 1 マス、その後 DAS を超えて入力 Tick を進めると更に右へ動く。
+	/// </summary>
+	[Fact]
+	public void MoveRightKeyDownThenAutoRepeatMovesFurtherRight()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		int startX = vm.Engine.Current!.X;
+
+		vm.MoveRightKeyDown();
+		Assert.Equal(startX + 1, vm.Engine.Current!.X);
+
+		for (int i = 0; i < 20; i++) // 16ms * 20 = 320ms（既定 DAS 170ms 超）
+		{
+			vm.AdvanceInputForTest(TimeSpan.FromMilliseconds(16));
+		}
+
+		Assert.True(vm.Engine.Current!.X > startX + 1);
+
+		vm.MoveRightKeyUp();
+		int afterRelease = vm.Engine.Current!.X;
+		for (int i = 0; i < 20; i++)
+		{
+			vm.AdvanceInputForTest(TimeSpan.FromMilliseconds(16));
+		}
+		Assert.Equal(afterRelease, vm.Engine.Current!.X);
+	}
+
+	/// <summary>
+	/// ポーズ中は入力 Tick でオートリピートが進まないことを確認する。
+	/// パス条件: キー押下後にポーズすると、入力 Tick を進めても位置が変わらない。
+	/// </summary>
+	[Fact]
+	public void AdvanceInputWhilePausedDoesNothing()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		vm.MoveLeftKeyDown();
+		vm.PauseCommand.Execute(null);
+		int beforeX = vm.Engine.Current!.X;
+
+		for (int i = 0; i < 20; i++)
+		{
+			vm.AdvanceInputForTest(TimeSpan.FromMilliseconds(16));
+		}
+
+		Assert.Equal(beforeX, vm.Engine.Current!.X);
+	}
+
+	/// <summary>
+	/// 4 ライン同時消しでも LinesClearing イベントが発火し、消去対象 4 行が通知されることを確認する
+	/// （テトリス専用の効果音・演出分岐を通す）。
+	/// パス条件: 下 4 行を完成させて固定すると、LinesClearing の Rows が 4 行になる。
+	/// </summary>
+	[Fact]
+	public void TetrisClearRaisesLinesClearingWithFourRows()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		vm.Engine.Grid[0, 0] = TetrominoType.J; // Perfect Clear にならないようにする
+		for (int row = GameEngine.Rows - 4; row < GameEngine.Rows; row++)
+		{
+			for (int x = 1; x < GameEngine.Columns; x++)
+			{
+				vm.Engine.Grid[row, x] = TetrominoType.J;
+			}
+		}
+		var verticalI = new Tetromino(TetrominoType.I).Rotated();
+		verticalI.X = -verticalI.Blocks().First().X;
+		verticalI.Y = (GameEngine.Rows - 4) - verticalI.Blocks().Min(c => c.Y);
+		vm.Engine.SetCurrentForTest(verticalI);
+		vm.Engine.LockCurrentForTest();
+
+		LinesClearingEventArgs? received = null;
+		vm.LinesClearing += (_, e) => received = e;
+		vm.RefreshForTest();
+
+		Assert.NotNull(received);
+		Assert.Equal(4, received!.Rows.Count);
+	}
+
+	/// <summary>
+	/// 左移動キーを離すとオートリピートが止まることを確認する。
+	/// パス条件: MoveLeftKeyUp 後は入力 Tick を進めてもピースが動かない。
+	/// </summary>
+	[Fact]
+	public void MoveLeftKeyUpStopsAutoRepeat()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		vm.MoveLeftKeyDown();
+
+		vm.MoveLeftKeyUp();
+		int afterRelease = vm.Engine.Current!.X;
+		for (int i = 0; i < 30; i++)
+		{
+			vm.AdvanceInputForTest(TimeSpan.FromMilliseconds(16));
+		}
+
+		Assert.Equal(afterRelease, vm.Engine.Current!.X);
+	}
+
+	/// <summary>
+	/// 開始前は左右移動キーの押下を受け付けないことを確認する（CanPlay ガード）。
+	/// パス条件: StartCommand を呼ぶ前に KeyDown してもピースが存在せず、例外にもならない。
+	/// </summary>
+	[Fact]
+	public void MoveKeyDownBeforeStartDoesNothing()
+	{
+		var vm = CreateViewModel();
+
+		vm.MoveLeftKeyDown();
+		vm.MoveRightKeyDown();
+
+		Assert.Null(vm.Engine.Current);
+	}
 }
