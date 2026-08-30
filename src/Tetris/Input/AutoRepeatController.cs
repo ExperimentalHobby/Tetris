@@ -20,6 +20,10 @@ public sealed class AutoRepeatController
 	{
 		_das = das ?? DefaultDas;
 		_arr = arr ?? DefaultArr;
+		if (_das < TimeSpan.Zero)
+		{
+			throw new ArgumentOutOfRangeException(nameof(das), _das, "DAS は 0 以上である必要があります。");
+		}
 		if (_arr <= TimeSpan.Zero)
 		{
 			throw new ArgumentOutOfRangeException(nameof(arr), _arr, "ARR は正の値である必要があります（0以下だと Advance 内の除算で 0 除算になるため）。");

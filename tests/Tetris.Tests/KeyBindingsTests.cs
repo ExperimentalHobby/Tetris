@@ -86,4 +86,21 @@ public class KeyBindingsTests
 
 		Assert.Null(action);
 	}
+
+	/// <summary>
+	/// ToDictionary() が内部辞書のコピーを返し、戻り値を変更しても元の KeyBindings に影響しないことを確認する。
+	/// パス条件: 戻り値を Dictionary にキャストして書き換えても GetKey の結果が変わらない。
+	/// </summary>
+	[Fact]
+	public void ToDictionaryReturnsCopyNotInternalState()
+	{
+		var bindings = KeyBindings.Default();
+		var snapshot = bindings.ToDictionary();
+
+		// 読み取り専用インターフェイスで返っていても実体が内部辞書だと書き換えられてしまう。
+		Assert.IsType<Dictionary<GameAction, Key>>(snapshot);
+		((Dictionary<GameAction, Key>)snapshot)[GameAction.MoveLeft] = Key.NumPad9;
+
+		Assert.Equal(Key.Left, bindings.GetKey(GameAction.MoveLeft));
+	}
 }

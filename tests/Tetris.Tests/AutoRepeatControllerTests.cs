@@ -218,4 +218,15 @@ public class AutoRepeatControllerTests
 		int burst = controller.Advance(TimeSpan.FromMilliseconds(100));
 		Assert.True(burst >= 9, $"100ms / ARR 10ms で 9 回以上を期待したが {burst} 回だった");
 	}
+
+	/// <summary>
+	/// DAS に負の値を渡すとコンストラクタで弾かれることを確認する
+	/// （AutoRepeatSettings.TryCreate と検証責務を対称にするため）。
+	/// パス条件: das に負値を渡すと ArgumentOutOfRangeException を投げる。
+	/// </summary>
+	[Fact]
+	public void ConstructorWithNegativeDasThrowsArgumentOutOfRangeException()
+	{
+		Assert.Throws<ArgumentOutOfRangeException>(() => new AutoRepeatController(das: TimeSpan.FromMilliseconds(-1)));
+	}
 }
