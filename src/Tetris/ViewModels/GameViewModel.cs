@@ -176,7 +176,10 @@ public sealed class GameViewModel : ObservableObject
 		AfterChange();
 	}
 
-	private void OnTick(object? sender, EventArgs e)
+	private void OnTick(object? sender, EventArgs e) => AdvanceGravity();
+
+	/// <summary>重力タイマー 1 Tick 分の処理。1 段落下させて落下間隔を更新する。</summary>
+	private void AdvanceGravity()
 	{
 		if (_isPaused || _engine.IsGameOver || _engine.IsClearing)
 		{
@@ -431,6 +434,9 @@ public sealed class GameViewModel : ObservableObject
 
 	/// <summary>テスト用: 入力タイマーの Tick 処理を任意の経過時間で直接進める。</summary>
 	internal void AdvanceInputForTest(TimeSpan elapsed) => AdvanceInput(elapsed);
+
+	/// <summary>テスト用: 重力タイマーの Tick 処理を直接進める。</summary>
+	internal void AdvanceGravityForTest() => AdvanceGravity();
 
 	/// <summary>経過時間・ピース数・テトリス率・PPS・LPMを現在の状態から再計算して反映する（プレイ中も逐次呼ばれる）。</summary>
 	private void UpdateLiveStats()
