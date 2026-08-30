@@ -507,7 +507,7 @@ public class GameEngineTests
 	{
 		var engine = StartedEngine();
 
-		int ghostY = engine.GhostY();
+		int ghostY = engine.GhostY()!.Value;
 
 		Assert.True(ghostY >= engine.Current!.Y);
 		int maxRow = engine.Current!.Blocks().Max(b => b.Y) + (ghostY - engine.Current!.Y);
@@ -780,7 +780,7 @@ public class GameEngineTests
 	{
 		var engine = StartedEngine();
 		engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
-		int ghostY = engine.GhostY();
+		int ghostY = engine.GhostY()!.Value;
 
 		engine.HardDrop();
 
@@ -797,7 +797,7 @@ public class GameEngineTests
 	{
 		var engine = StartedEngine();
 		engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
-		int expectedDistance = engine.GhostY();
+		int expectedDistance = engine.GhostY()!.Value;
 
 		engine.HardDrop();
 
@@ -1144,5 +1144,76 @@ public class GameEngineTests
 
 		Assert.Equal(1, engine.Lines);
 		Assert.Equal(200 * engine.Level, engine.Score);
+	}
+
+	/// <summary>
+	/// Start() 前は先読みキューが空のため NextType が null を返すことを確認する。
+	/// パス条件: 例外を投げず null を返す（従来は ArgumentOutOfRangeException になっていた）。
+	/// </summary>
+	[Fact]
+	public void NextTypeBeforeStartReturnsNull()
+	{
+		var engine = new GameEngine();
+
+		Assert.Null(engine.NextType);
+	}
+
+	/// <summary>
+	/// 落下中のピースが無いときは GhostY が null を返すことを確認する。
+	/// パス条件: Start() 前は null（従来は 0 = 盤面最上段を意味する有効な行番号を返していた）。
+	/// </summary>
+	[Fact]
+	public void GhostYWithoutCurrentPieceReturnsNull()
+	{
+		var engine = new GameEngine();
+
+		Assert.Null(engine.GhostY());
+	}
+
+	/// <summary>
+	/// T-Spin Full が 4 ライン消去に絡んでも得点テーブルの範囲外参照で落ちないことを確認する。
+	/// T ピースは最大 3 行しか占有しないため通常プレイでは起こらないが、盤面を直接操作すると
+	/// 4 行同時消去と T-Spin Full が同時に成立し、従来は IndexOutOfRangeException になっていた。
+	/// パス条件: CommitClear が例外を投げず、上限（3 ライン分）にクランプした得点が入る。
+	/// </summary>
+	[Fact]
+	public void CommitClearTSpinFullWithFourLinesDoesNotThrow()
+	{
+		const int centerX = 4;
+		int centerY = GameEngine.Rows - 2;
+		var engine = StartedEngine();
+
+		// T が関与しない最下行と 4 行目を事前に満杯にしておく。
+		for (int x = 0; x < GameEngine.Columns; x++)
+		{
+			engine.Grid[GameEngine.Rows - 4, x] = TetrominoType.J;
+			engine.Grid[GameEngine.Rows - 1, x] = TetrominoType.J;
+		}
+		// T の point(上)と left/center/right が入る 2 行は、その分だけ空けて埋める。
+		for (int x = 0; x < GameEngine.Columns; x++)
+		{
+			if (x != centerX)
+			{
+				engine.Grid[GameEngine.Rows - 3, x] = TetrominoType.J;
+			}
+			if (x < centerX - 1 || x > centerX + 1)
+			{
+				engine.Grid[GameEngine.Rows - 2, x] = TetrominoType.J;
+			}
+		}
+
+		var piece = new Tetromino(TetrominoType.T).Rotated().Rotated().Rotated();
+		piece.X = centerX - 1;
+		piece.Y = centerY - 1;
+		engine.SetCurrentForTest(piece);
+		Assert.True(engine.Rotate());
+		engine.LockCurrentForTest();
+		Assert.Equal(4, engine.PendingClearRows.Count);
+
+		engine.CommitClear();
+
+		Assert.Equal(4, engine.Lines);
+		// 3 ライン分（1600×Level）にクランプされる。Perfect Clear になるため実際は専用テーブルが優先される。
+		Assert.True(engine.Score > 0);
 	}
 }

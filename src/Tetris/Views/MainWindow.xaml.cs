@@ -606,9 +606,8 @@ public partial class MainWindow : Window
 		}
 
 		// ゴースト（着地予測）と落下中のピース
-		if (engine.Current is { } current)
+		if (engine.Current is { } current && engine.GhostY() is { } ghostY)
 		{
-			int ghostY = engine.GhostY();
 			int offset = ghostY - current.Y;
 			var ghostColor = Tetromino.Colors[current.Type];
 			foreach (var (bx, by) in current.Blocks())

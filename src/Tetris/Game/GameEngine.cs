@@ -89,8 +89,11 @@ public sealed class GameEngine
 	/// <summary>先読み表示用の次ピース列（先頭がすぐ次に出現する種）。</summary>
 	public IReadOnlyList<TetrominoType> NextQueue => _nextQueue;
 
-	/// <summary>次に出現するピース種（<see cref="NextQueue"/> の先頭と同じ）。</summary>
-	public TetrominoType NextType => _nextQueue[0];
+	/// <summary>
+	/// 次に出現するピース種（<see cref="NextQueue"/> の先頭と同じ）。
+	/// <see cref="Start"/> を呼ぶ前は先読みキューが空のため null を返す。
+	/// </summary>
+	public TetrominoType? NextType => _nextQueue.Count > 0 ? _nextQueue[0] : null;
 
 	/// <summary>ホールド（保管）中のピース種。まだ何も保管していない場合は null。</summary>
 	public TetrominoType? HeldType { get; private set; }
@@ -529,8 +532,10 @@ public sealed class GameEngine
 		if (_pendingTSpinKind == TSpinKind.Full)
 		{
 			// T-Spin Full: 1/2/3 ライン消去（×Level）。
+			// T ピースは最大 3 行しか占有しないため通常プレイでは cleared <= 3 だが、
+			// 盤面を直接操作した場合などに範囲外参照で落ちないよう上限でクランプする。
 			int[] tSpinFullTable = { 0, 800, 1200, 1600 };
-			baseScore = tSpinFullTable[cleared] * Level;
+			baseScore = tSpinFullTable[Math.Min(cleared, tSpinFullTable.Length - 1)] * Level;
 		}
 		else if (_pendingTSpinKind == TSpinKind.Mini)
 		{
@@ -591,12 +596,15 @@ public sealed class GameEngine
 	/// <summary>テスト用: 現在のピースをその場で固定し、満杯行の検出まで行う。</summary>
 	internal void LockCurrentForTest() => LockPiece();
 
-	/// <summary>ハードドロップ時のゴースト（着地予測）位置の Y を返す。</summary>
-	public int GhostY()
+	/// <summary>
+	/// ハードドロップ時のゴースト（着地予測）位置の Y を返す。
+	/// 落下中のピースが無い場合は null を返す（0 は盤面最上段を意味する有効な行番号のため）。
+	/// </summary>
+	public int? GhostY()
 	{
 		if (Current is null)
 		{
-			return 0;
+			return null;
 		}
 		var ghost = Current.Clone();
 		while (true)

@@ -477,7 +477,7 @@ public class GameViewModelTests : IDisposable
 		var vm = CreateViewModel();
 		vm.StartCommand.Execute(null);
 		vm.Engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 0 });
-		int ghostY = vm.Engine.GhostY();
+		int ghostY = vm.Engine.GhostY()!.Value;
 		int distance = ghostY - vm.Engine.Current!.Y;
 
 		vm.HardDropCommand.Execute(null);

@@ -48,8 +48,11 @@ public sealed class KeyBindings
 	/// <summary>指定した操作に割り当てられているキーを返す。</summary>
 	public Key GetKey(GameAction action) => _map[action];
 
-	/// <summary>永続化用に全操作とキーの対応を読み取り専用の辞書として返す。</summary>
-	public IReadOnlyDictionary<GameAction, Key> ToDictionary() => _map;
+	/// <summary>
+	/// 永続化用に全操作とキーの対応を辞書として返す。
+	/// 呼び出し側の変更が内部状態に波及しないようコピーを返す。
+	/// </summary>
+	public IReadOnlyDictionary<GameAction, Key> ToDictionary() => new Dictionary<GameAction, Key>(_map);
 
 	/// <summary>指定したキーに割り当てられている操作を返す。どの操作にも割り当てられていなければ null。</summary>
 	public GameAction? ActionFor(Key key)
