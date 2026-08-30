@@ -36,6 +36,8 @@ public sealed class GameViewModel : ObservableObject
 	private double _tetrisRate;
 	private double _pps;
 	private double _lpm;
+	private int _combo;
+	private bool _isBackToBack;
 
 	public GameViewModel() : this(new HighScoreService(), new AutoRepeatSettingsService(), new SoundEffectService(), new SoundSettingsService())
 	{
@@ -115,6 +117,34 @@ public sealed class GameViewModel : ObservableObject
 
 	/// <summary>LPM（Lines Per Minute、統計表示用）。プレイ中も逐次更新され、ゲームオーバー時点で確定する。</summary>
 	public double Lpm { get => _lpm; private set => SetProperty(ref _lpm, value); }
+
+	/// <summary>連続してライン消去に成功した回数。消去を伴わない固定で 0 に戻る。</summary>
+	public int Combo
+	{
+		get => _combo;
+		private set
+		{
+			if (SetProperty(ref _combo, value))
+			{
+				OnPropertyChanged(nameof(ComboText));
+				OnPropertyChanged(nameof(IsComboActive));
+			}
+		}
+	}
+
+	/// <summary>
+	/// 直近の消去で Back-to-Back ボーナスが適用されたかどうか。
+	/// テトリスや T-Spin による消去が連続したときに true になる（1 回目は連続していないため false）。
+	/// </summary>
+	public bool IsBackToBack { get => _isBackToBack; private set => SetProperty(ref _isBackToBack, value); }
+
+	/// <summary>コンボバッジの表示文字列。</summary>
+	public string ComboText => $"COMBO x{Combo}";
+
+	/// <summary>
+	/// コンボバッジを表示すべきか。1 回目の消去はボーナスが付かないため、2 回以上のときだけ表示する。
+	/// </summary>
+	public bool IsComboActive => Combo >= 2;
 
 	/// <summary>効果音の再生音量（0.0〜1.0）。</summary>
 	public double Volume
@@ -372,6 +402,8 @@ public sealed class GameViewModel : ObservableObject
 		Score = _engine.Score;
 		Lines = _engine.Lines;
 		Level = _engine.Level;
+		Combo = _engine.Combo;
+		IsBackToBack = _engine.IsBackToBack;
 		if (_isStarted)
 		{
 			UpdateLiveStats();

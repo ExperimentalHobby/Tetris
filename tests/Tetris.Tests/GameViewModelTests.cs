@@ -623,4 +623,109 @@ public class GameViewModelTests : IDisposable
 
 		Assert.Null(vm.Engine.Current);
 	}
+
+	/// <summary>最下行を 1 ライン消去して確定させるヘルパー（コンボ検証用）。</summary>
+	private static void ClearOneLine(GameViewModel vm)
+	{
+		int row = GameEngine.Rows - 1;
+		for (int x = 2; x < GameEngine.Columns; x++)
+		{
+			vm.Engine.Grid[row, x] = TetrominoType.I;
+		}
+		vm.Engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 0, Y = row - 1 });
+		vm.Engine.LockCurrentForTest();
+		vm.CompleteLineClear();
+	}
+
+	/// <summary>
+	/// 1 回目の消去ではコンボバッジを出さないことを確認する（ボーナスが付かないため）。
+	/// パス条件: 1 ライン消去後、Combo は 1 で IsComboActive は false。
+	/// </summary>
+	[Fact]
+	public void SingleClearDoesNotActivateComboBadge()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+
+		ClearOneLine(vm);
+
+		Assert.Equal(1, vm.Combo);
+		Assert.False(vm.IsComboActive);
+	}
+
+	/// <summary>
+	/// 消去が連続すると Combo が増え、2 回目からバッジが表示されることを確認する。
+	/// パス条件: 2 連続消去で Combo=2・IsComboActive=true・ComboText が "COMBO x2"。
+	/// </summary>
+	[Fact]
+	public void ConsecutiveClearsActivateComboBadge()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+
+		ClearOneLine(vm);
+		ClearOneLine(vm);
+
+		Assert.Equal(2, vm.Combo);
+		Assert.True(vm.IsComboActive);
+		Assert.Equal("COMBO x2", vm.ComboText);
+	}
+
+	/// <summary>
+	/// ライン消去を伴わない固定でコンボが途切れ、バッジが消えることを確認する。
+	/// パス条件: コンボ成立後に消去なしで固定すると Combo=0・IsComboActive=false。
+	/// </summary>
+	[Fact]
+	public void LockWithoutClearResetsComboBadge()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		ClearOneLine(vm);
+		ClearOneLine(vm);
+		Assert.True(vm.IsComboActive);
+
+		// 消去にならない位置で固定する。
+		vm.Engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 5 });
+		vm.Engine.LockCurrentForTest();
+		vm.RefreshForTest();
+
+		Assert.Equal(0, vm.Combo);
+		Assert.False(vm.IsComboActive);
+	}
+
+	/// <summary>
+	/// テトリスを 2 回連続で決めると Back-to-Back バッジが表示されることを確認する。
+	/// パス条件: 1 回目は IsBackToBack が false、2 回目で true になる。
+	/// </summary>
+	[Fact]
+	public void ConsecutiveTetrisActivatesBackToBackBadge()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+
+		ClearTetris(vm);
+		Assert.False(vm.IsBackToBack); // 連続していないため 1 回目は対象外
+
+		ClearTetris(vm);
+		Assert.True(vm.IsBackToBack);
+	}
+
+	/// <summary>最下 4 行をテトリスで消去して確定させるヘルパー（B2B 検証用）。</summary>
+	private static void ClearTetris(GameViewModel vm)
+	{
+		vm.Engine.Grid[0, 0] = TetrominoType.J; // Perfect Clear にならないようにする
+		for (int row = GameEngine.Rows - 4; row < GameEngine.Rows; row++)
+		{
+			for (int x = 1; x < GameEngine.Columns; x++)
+			{
+				vm.Engine.Grid[row, x] = TetrominoType.J;
+			}
+		}
+		var verticalI = new Tetromino(TetrominoType.I).Rotated();
+		verticalI.X = -verticalI.Blocks().First().X;
+		verticalI.Y = (GameEngine.Rows - 4) - verticalI.Blocks().Min(c => c.Y);
+		vm.Engine.SetCurrentForTest(verticalI);
+		vm.Engine.LockCurrentForTest();
+		vm.CompleteLineClear();
+	}
 }
