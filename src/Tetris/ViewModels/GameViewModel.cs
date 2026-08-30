@@ -14,6 +14,12 @@ public sealed class GameViewModel : ObservableObject
 	private readonly GameEngine _engine = new();
 	private readonly DispatcherTimer _timer = new();
 	private readonly DispatcherTimer _inputTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+
+	/// <summary>
+	/// 入力タイマー 1 回分として扱う経過時間の上限。長時間のフリーズやデバッガ停止の直後に
+	/// ロックディレイやオートリピートが一気に進んでしまうのを防ぐ。
+	/// </summary>
+	private static readonly TimeSpan MaxInputStep = TimeSpan.FromMilliseconds(100);
 	private readonly AutoRepeatSettingsService _autoRepeatSettingsService;
 	private AutoRepeatController _leftRepeat;
 	private AutoRepeatController _rightRepeat;
@@ -21,6 +27,9 @@ public sealed class GameViewModel : ObservableObject
 	private readonly SoundEffectService _soundService;
 	private readonly SoundSettingsService _soundSettingsService;
 	private readonly Stopwatch _playStopwatch = new();
+
+	/// <summary>入力タイマーの Tick 間隔を実時間で測るためのストップウォッチ。</summary>
+	private readonly Stopwatch _inputStopwatch = new();
 
 	private bool _isStarted;
 	private bool _isPaused;
@@ -200,7 +209,7 @@ public sealed class GameViewModel : ObservableObject
 		ReleaseDirectionKeys();
 		_timer.Interval = _engine.DropInterval;
 		_timer.Start();
-		_inputTimer.Start();
+		StartInputTimer();
 		Status = string.Empty;
 		GameStarted?.Invoke(this, EventArgs.Empty);
 		AfterChange();
@@ -260,7 +269,31 @@ public sealed class GameViewModel : ObservableObject
 	/// ロックディレイ（500ms）も落下タイマー（レベルに応じて80〜800ms）ではなくこの16ms間隔で進めることで、
 	/// 設計値どおりの精度で判定する。
 	/// </summary>
-	private void OnInputTick(object? sender, EventArgs e) => AdvanceInput(_inputTimer.Interval);
+	/// <summary>
+	/// 入力タイマーの Tick。DispatcherTimer は負荷が高いと Interval より遅れて発火するため、
+	/// 公称間隔ではなく前回 Tick からの実経過時間を渡す。
+	/// </summary>
+	private void OnInputTick(object? sender, EventArgs e)
+	{
+		var elapsed = _inputStopwatch.Elapsed;
+		_inputStopwatch.Restart();
+		AdvanceInput(elapsed);
+	}
+
+	/// <summary>入力タイマーを開始し、実経過時間の計測も開始（再開）する。</summary>
+	private void StartInputTimer()
+	{
+		// 停止していた時間が次の Tick に丸ごと渡らないよう、開始のたびに測り直す。
+		_inputStopwatch.Restart();
+		_inputTimer.Start();
+	}
+
+	/// <summary>入力タイマーと実経過時間の計測を停止する。</summary>
+	private void StopInputTimer()
+	{
+		_inputTimer.Stop();
+		_inputStopwatch.Stop();
+	}
 
 	/// <summary>入力タイマー 1 Tick 分の処理。経過時間を受け取り、ロックディレイと DAS/ARR のリピートを進める。</summary>
 	private void AdvanceInput(TimeSpan elapsed)
@@ -268,6 +301,10 @@ public sealed class GameViewModel : ObservableObject
 		if (_isPaused || _engine.IsGameOver || _engine.IsClearing)
 		{
 			return;
+		}
+		if (elapsed > MaxInputStep)
+		{
+			elapsed = MaxInputStep;
 		}
 		bool locked = _engine.AdvanceLockDelay(elapsed);
 		int leftRepeats = _leftRepeat.Advance(elapsed);
@@ -298,7 +335,7 @@ public sealed class GameViewModel : ObservableObject
 		{
 			_timer.Interval = _engine.DropInterval;
 			_timer.Start();
-			_inputTimer.Start();
+			StartInputTimer();
 		}
 		AfterChange();
 	}
@@ -382,7 +419,7 @@ public sealed class GameViewModel : ObservableObject
 		if (_isPaused)
 		{
 			_timer.Stop();
-			_inputTimer.Stop();
+			StopInputTimer();
 			_playStopwatch.Stop();
 			ReleaseDirectionKeys();
 			Status = "PAUSED";
@@ -390,7 +427,7 @@ public sealed class GameViewModel : ObservableObject
 		else
 		{
 			_timer.Start();
-			_inputTimer.Start();
+			StartInputTimer();
 			_playStopwatch.Start(); // Restart ではなく Start。ポーズ前の経過時間から計測を再開する。
 			Status = string.Empty;
 		}
@@ -413,7 +450,7 @@ public sealed class GameViewModel : ObservableObject
 		if (_engine.IsClearing)
 		{
 			_timer.Stop();
-			_inputTimer.Stop();
+			StopInputTimer();
 			StateChanged?.Invoke(this, EventArgs.Empty); // 満杯のままの盤面を描画
 			if (_engine.PendingClearRows.Count >= 4)
 				_soundService.PlayTetris();
@@ -428,7 +465,7 @@ public sealed class GameViewModel : ObservableObject
 		if (_engine.IsGameOver)
 		{
 			_timer.Stop();
-			_inputTimer.Stop();
+			StopInputTimer();
 			Status = "GAME OVER\nEnter で再開";
 			if (!_gameOverNotified)
 			{

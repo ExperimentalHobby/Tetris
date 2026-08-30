@@ -728,4 +728,71 @@ public class GameViewModelTests : IDisposable
 		vm.Engine.LockCurrentForTest();
 		vm.CompleteLineClear();
 	}
+
+	/// <summary>接地状態のピースを用意する（ロックディレイ検証用）。</summary>
+	private static void GroundPiece(GameViewModel vm)
+	{
+		vm.Engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = GameEngine.Rows - 2 });
+		Assert.True(vm.Engine.IsGrounded);
+	}
+
+	/// <summary>
+	/// 巨大な経過時間が渡ってもロックディレイが一気に進まないことを確認する
+	/// （長時間フリーズやデバッガ停止の直後を想定した上限クランプ）。
+	/// パス条件: 接地状態で 5 秒相当を 1 回渡しても、上限 100ms 分しか進まず固定されない。
+	/// </summary>
+	[Fact]
+	public void AdvanceInputClampsExcessiveElapsedTime()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		GroundPiece(vm);
+
+		vm.AdvanceInputForTest(TimeSpan.FromSeconds(5));
+
+		// ロックディレイは 500ms。クランプが効いていれば 1 回では固定されない。
+		Assert.NotNull(vm.Engine.Current);
+	}
+
+	/// <summary>
+	/// クランプ上限ちょうどの経過時間を積み重ねるとロックディレイに到達して固定されることを確認する。
+	/// パス条件: 100ms を 5 回渡すと合計 500ms となりピースが固定される。
+	/// </summary>
+	[Fact]
+	public void AdvanceInputAccumulatesUntilLockDelayElapses()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		GroundPiece(vm);
+
+		for (int i = 0; i < 5; i++)
+		{
+			vm.AdvanceInputForTest(TimeSpan.FromMilliseconds(100));
+		}
+
+		// 固定されると Current は次のピースに差し替わり、盤面にブロックが残る。
+		Assert.NotNull(vm.Engine.Grid[GameEngine.Rows - 1, 4]);
+	}
+
+	/// <summary>
+	/// クランプ未満の経過時間はそのまま反映されることを確認する（既存の 16ms 刻み動作を壊さない）。
+	/// パス条件: 接地状態で 16ms を 31 回（496ms）渡しても固定されず、32 回目（512ms）で固定される。
+	/// </summary>
+	[Fact]
+	public void AdvanceInputBelowClampAdvancesExactly()
+	{
+		var vm = CreateViewModel();
+		vm.StartCommand.Execute(null);
+		GroundPiece(vm);
+
+		for (int i = 0; i < 31; i++) // 16ms * 31 = 496ms < 500ms
+		{
+			vm.AdvanceInputForTest(TimeSpan.FromMilliseconds(16));
+		}
+		Assert.Null(vm.Engine.Grid[GameEngine.Rows - 1, 4]);
+
+		vm.AdvanceInputForTest(TimeSpan.FromMilliseconds(16)); // 合計 512ms
+
+		Assert.NotNull(vm.Engine.Grid[GameEngine.Rows - 1, 4]);
+	}
 }
