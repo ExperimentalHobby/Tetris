@@ -9,6 +9,12 @@ namespace Tetris.Services;
 public sealed class SoundEffectService
 {
 	private readonly string _dir;
+
+	/// <summary>
+	/// 音種ごとの再生プレイヤー。毎回生成すると再生中に GC で回収されうるうえ、
+	/// MediaEnded が来ないケースで解放漏れになるため、ファイル名をキーに使い回す。
+	/// </summary>
+	private readonly Dictionary<string, MediaPlayer> _players = new();
 	private double _volume = 1.0;
 
 	/// <summary>再生音量（0.0〜1.0）。範囲外の値は自動的にクランプされる。</summary>
@@ -57,13 +63,18 @@ public sealed class SoundEffectService
 		}
 		try
 		{
-			var player = new MediaPlayer
+			if (!_players.TryGetValue(fileName, out var player))
 			{
-				Volume = IsMuted ? 0.0 : Volume,
-			};
-			// 再生終了後に自動でリソースを解放する。
-			player.MediaEnded += (s, _) => ((MediaPlayer)s!).Close();
-			player.Open(new Uri(path, UriKind.Absolute));
+				player = new MediaPlayer();
+				player.Open(new Uri(path, UriKind.Absolute));
+				_players[fileName] = player;
+			}
+			else
+			{
+				// 同じ効果音が連続したときは重ねず、先頭から鳴らし直す。
+				player.Position = TimeSpan.Zero;
+			}
+			player.Volume = IsMuted ? 0.0 : Volume;
 			player.Play();
 		}
 		catch
