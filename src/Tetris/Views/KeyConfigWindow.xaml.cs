@@ -89,6 +89,8 @@ public partial class KeyConfigWindow : Window
 	/// <summary>指定した操作を「次に押されたキーで上書きする」待機状態にする。</summary>
 	private void BeginListening(GameAction action)
 	{
+		// 直前に別の行を待機中にしていた場合、その行の表示が残らないよう一度すべて元に戻す。
+		RefreshKeyTexts();
 		_listeningAction = action;
 		_keyTexts[action].Text = "キーを押してください...";
 	}
