@@ -36,11 +36,35 @@ public partial class AutoRepeatConfigWindow : Window
 
 	private void OnSaveClick(object sender, RoutedEventArgs e)
 	{
-		if (!double.TryParse(DasTextBox.Text, NumberStyles.Number, CultureInfo.InvariantCulture, out var dasMs)
-			|| !double.TryParse(ArrTextBox.Text, NumberStyles.Number, CultureInfo.InvariantCulture, out var arrMs))
+		if (!TryParseSettings(DasTextBox.Text, ArrTextBox.Text, out var settings, out var error))
 		{
-			ShowError("DAS/ARRは数値で入力してください。");
+			ShowError(error!);
 			return;
+		}
+
+		Result = settings;
+		DialogResult = true;
+		Close();
+	}
+
+	/// <summary>
+	/// 入力文字列を検証して DAS/ARR 設定を生成する。WPF に依存しない純粋なロジックとして切り出しており、
+	/// 単体テストから直接呼び出せる。
+	/// </summary>
+	/// <param name="dasText">DAS の入力文字列（ミリ秒）。</param>
+	/// <param name="arrText">ARR の入力文字列（ミリ秒）。</param>
+	/// <param name="settings">生成できた場合の設定値。失敗時は null。</param>
+	/// <param name="error">失敗した場合のエラーメッセージ。成功時は null。</param>
+	/// <returns>設定を生成できた場合 true。</returns>
+	internal static bool TryParseSettings(string dasText, string arrText, out AutoRepeatSettings? settings, out string? error)
+	{
+		settings = null;
+
+		if (!double.TryParse(dasText, NumberStyles.Number, CultureInfo.InvariantCulture, out var dasMs)
+			|| !double.TryParse(arrText, NumberStyles.Number, CultureInfo.InvariantCulture, out var arrMs))
+		{
+			error = "DAS/ARRは数値で入力してください。";
+			return false;
 		}
 
 		TimeSpan das;
@@ -50,21 +74,15 @@ public partial class AutoRepeatConfigWindow : Window
 			das = TimeSpan.FromMilliseconds(dasMs);
 			arr = TimeSpan.FromMilliseconds(arrMs);
 		}
-		catch (ArgumentOutOfRangeException)
+		// TimeSpan.FromMilliseconds は範囲外で OverflowException、NaN で ArgumentException を投げる。
+		// ArgumentOutOfRangeException だけを捕捉していると範囲外入力で未処理例外になるため両方を受け止める。
+		catch (Exception ex) when (ex is OverflowException or ArgumentException)
 		{
-			ShowError("DAS/ARR の値が大きすぎます。");
-			return;
+			error = "DAS/ARR の値が大きすぎます。";
+			return false;
 		}
 
-		if (!AutoRepeatSettings.TryCreate(das, arr, out var settings, out var error))
-		{
-			ShowError(error!);
-			return;
-		}
-
-		Result = settings;
-		DialogResult = true;
-		Close();
+		return AutoRepeatSettings.TryCreate(das, arr, out settings, out error);
 	}
 
 	private void ShowError(string message)
