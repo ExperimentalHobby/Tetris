@@ -997,4 +997,152 @@ public class GameEngineTests
 		Assert.Equal(TimeSpan.FromMilliseconds(expectedIntervalMs), engine.DropInterval);
 	}
 
+
+	/// <summary>
+	/// T-Spin 判定の「前方/後方」の隅を回転姿勢ごとに返す（<c>DetectTSpin</c> の switch と対応）。
+	/// オフセットは中心セルからの相対位置。
+	/// </summary>
+	private static ((int Dx, int Dy)[] Front, (int Dx, int Dy)[] Back) TSpinCorners(int rotationState)
+	{
+		(int, int) tl = (-1, -1), tr = (1, -1), bl = (-1, 1), br = (1, 1);
+		return rotationState switch
+		{
+			0 => (new[] { tl, tr }, new[] { bl, br }), // 尖端: 上
+			1 => (new[] { tr, br }, new[] { tl, bl }), // 尖端: 右
+			2 => (new[] { bl, br }, new[] { tl, tr }), // 尖端: 下
+			_ => (new[] { tl, bl }, new[] { tr, br }), // 尖端: 左
+		};
+	}
+
+	/// <summary>
+	/// T ピースを指定の回転姿勢へ「実際に回転させて」到達させ、指定数の隅を埋めた盤面を用意する。
+	/// DetectTSpin は直前の成功アクションが回転であることを要求するため、SetCurrentForTest で
+	/// 1 つ手前の姿勢を置いてから Rotate() を呼ぶ必要がある。
+	/// </summary>
+	private static GameEngine ArrangeTSpin(int toState, int frontFilled, int backFilled, int centerX = 4, int centerY = 10)
+	{
+		var engine = StartedEngine();
+		var (front, back) = TSpinCorners(toState);
+		for (int i = 0; i < frontFilled; i++)
+		{
+			engine.Grid[centerY + front[i].Dy, centerX + front[i].Dx] = TetrominoType.J;
+		}
+		for (int i = 0; i < backFilled; i++)
+		{
+			engine.Grid[centerY + back[i].Dy, centerX + back[i].Dx] = TetrominoType.J;
+		}
+
+		// 1 つ手前の姿勢で置いてから回転させ、目的の姿勢に到達させる。
+		var piece = new Tetromino(TetrominoType.T);
+		for (int i = 0; i < (toState + 3) % 4; i++)
+		{
+			piece = piece.Rotated();
+		}
+		piece.X = centerX - 1;
+		piece.Y = centerY - 1;
+		engine.SetCurrentForTest(piece);
+
+		Assert.True(engine.Rotate(), $"回転に失敗した (toState={toState})");
+		Assert.Equal(toState, engine.Current!.RotationState);
+		return engine;
+	}
+
+	/// <summary>
+	/// 4 つの回転姿勢すべてで T-Spin Full が判定され、ライン消去を伴わない固定で 400×Level が入ることを確認する。
+	/// パス条件: 前方 2 隅 + 後方 1 隅を埋めて回転・固定すると Score が 400×Level になる。
+	/// </summary>
+	[Theory]
+	[InlineData(0)]
+	[InlineData(1)]
+	[InlineData(2)]
+	[InlineData(3)]
+	public void DetectTSpinFullInEveryRotationState(int toState)
+	{
+		var engine = ArrangeTSpin(toState, frontFilled: 2, backFilled: 1);
+
+		engine.LockCurrentForTest();
+
+		Assert.Empty(engine.PendingClearRows);
+		Assert.Equal(400 * engine.Level, engine.Score);
+	}
+
+	/// <summary>
+	/// 4 つの回転姿勢すべてで T-Spin Mini が判定され、ライン消去を伴わない固定で 100×Level が入ることを確認する。
+	/// パス条件: 前方 1 隅 + 後方 2 隅を埋めて回転・固定すると Score が 100×Level になる。
+	/// </summary>
+	[Theory]
+	[InlineData(0)]
+	[InlineData(1)]
+	[InlineData(2)]
+	[InlineData(3)]
+	public void DetectTSpinMiniInEveryRotationState(int toState)
+	{
+		var engine = ArrangeTSpin(toState, frontFilled: 1, backFilled: 2);
+
+		engine.LockCurrentForTest();
+
+		Assert.Empty(engine.PendingClearRows);
+		Assert.Equal(100 * engine.Level, engine.Score);
+	}
+
+	/// <summary>
+	/// 埋まっている隅が 3 つ未満のときは T-Spin と判定されないことを確認する。
+	/// パス条件: 前方 1 隅 + 後方 1 隅（計 2 隅）では固定点ボーナスが入らない。
+	/// </summary>
+	[Theory]
+	[InlineData(0)]
+	[InlineData(1)]
+	[InlineData(2)]
+	[InlineData(3)]
+	public void DetectTSpinNoneWhenFewerThanThreeCornersOccupied(int toState)
+	{
+		var engine = ArrangeTSpin(toState, frontFilled: 1, backFilled: 1);
+
+		engine.LockCurrentForTest();
+
+		Assert.Empty(engine.PendingClearRows);
+		Assert.Equal(0, engine.Score);
+	}
+
+	/// <summary>
+	/// T-Spin Mini で 1 ライン消去したときに専用の得点(200×Level)が入ることを確認する。
+	/// パス条件: 尖端上向きの T が横一列を完成させ、前方 1 隅・後方 2 隅が埋まっていると Score=200×Level。
+	/// </summary>
+	[Fact]
+	public void CommitClearTSpinMiniSingleScoresMiniTable()
+	{
+		const int centerX = 4;
+		const int centerY = GameEngine.Rows - 2;
+		var engine = StartedEngine();
+
+		// 尖端上向き(state 0)の T は中心行に left/center/right の 3 セルを持つ。
+		// その行の残り 7 セルを埋めておき、固定で 1 ライン完成させる。
+		for (int x = 0; x < GameEngine.Columns; x++)
+		{
+			if (x < centerX - 1 || x > centerX + 1)
+			{
+				engine.Grid[centerY, x] = TetrominoType.J;
+			}
+		}
+		// 後方(下)の 2 隅と前方(上)の 1 隅だけを埋めて Mini 条件にする。
+		engine.Grid[centerY + 1, centerX - 1] = TetrominoType.J;
+		engine.Grid[centerY + 1, centerX + 1] = TetrominoType.J;
+		engine.Grid[centerY - 1, centerX - 1] = TetrominoType.J;
+
+		// state 3 で置いてから回転して state 0 にする（直前アクションを回転にするため）。
+		var piece = new Tetromino(TetrominoType.T).Rotated().Rotated().Rotated();
+		piece.X = centerX - 1;
+		piece.Y = centerY - 1;
+		engine.SetCurrentForTest(piece);
+		Assert.True(engine.Rotate());
+		Assert.Equal(0, engine.Current!.RotationState);
+
+		engine.LockCurrentForTest();
+		Assert.Single(engine.PendingClearRows);
+
+		engine.CommitClear();
+
+		Assert.Equal(1, engine.Lines);
+		Assert.Equal(200 * engine.Level, engine.Score);
+	}
 }
