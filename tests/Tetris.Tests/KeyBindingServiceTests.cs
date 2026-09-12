@@ -53,4 +53,38 @@ public class KeyBindingServiceTests : IDisposable
 
 		Assert.Equal(Key.X, result.GetKey(GameAction.Rotate));
 	}
+
+	/// <summary>
+	/// 保存ファイルの中身が JSON として解釈できない場合、例外を投げず既定のキー割り当てを
+	/// 返すことを確認する。
+	/// パス条件: 不正な内容のファイルを直接書いた後 Load() の Rotate が既定値 Key.Up。
+	/// </summary>
+	[Fact]
+	public void LoadWhenFileIsCorruptedReturnsDefaultBindings()
+	{
+		Directory.CreateDirectory(_tempDir);
+		File.WriteAllText(Path.Combine(_tempDir, "keybindings.json"), "{ this is not valid json");
+		var service = CreateService();
+
+		var result = service.Load();
+
+		Assert.Equal(Key.Up, result.GetKey(GameAction.Rotate));
+	}
+
+	/// <summary>
+	/// 保存ファイルの中身が JSON としては正しいが null（"null" というJSON値）の場合、
+	/// 例外を投げず既定のキー割り当てを返すことを確認する。
+	/// パス条件: ファイルの内容が "null" のとき Load() の Rotate が既定値 Key.Up。
+	/// </summary>
+	[Fact]
+	public void LoadWhenFileContentIsJsonNullReturnsDefaultBindings()
+	{
+		Directory.CreateDirectory(_tempDir);
+		File.WriteAllText(Path.Combine(_tempDir, "keybindings.json"), "null");
+		var service = CreateService();
+
+		var result = service.Load();
+
+		Assert.Equal(Key.Up, result.GetKey(GameAction.Rotate));
+	}
 }
