@@ -1216,4 +1216,56 @@ public class GameEngineTests
 		// 3 ライン分（1600×Level）にクランプされる。Perfect Clear になるため実際は専用テーブルが優先される。
 		Assert.True(engine.Score > 0);
 	}
+
+	/// <summary>
+	/// 特性化テスト: T-Spin と Perfect Clear が同時に成立した場合、現在の実装は
+	/// 「T-Spin の得点 + Perfect Clear ボーナス」の加算ではなく、Perfect Clear の得点テーブルで
+	/// <b>上書き</b>する。これは意図的な仕様であり、加算方式へは変更しないと判断した（Issue #72）。
+	/// パス条件: <see cref="CommitClearTSpinFullWithFourLinesDoesNotThrow"/> と同一の盤面
+	/// （T-Spin Full 相当の 4 ライン消去かつ消去後に全消しになる）で、Score が
+	/// Perfect Clear テーブル[4]×Level(=2000×Level) になる。T-Spin Full 側の得点
+	/// （3 ラインにクランプされた 1600×Level）には加算されない。
+	/// </summary>
+	[Fact]
+	public void CommitClearTSpinFullPerfectClearOverwritesRatherThanAdding()
+	{
+		const int centerX = 4;
+		int centerY = GameEngine.Rows - 2;
+		var engine = StartedEngine();
+
+		// T が関与しない最下行と 4 行目を事前に満杯にしておく。
+		for (int x = 0; x < GameEngine.Columns; x++)
+		{
+			engine.Grid[GameEngine.Rows - 4, x] = TetrominoType.J;
+			engine.Grid[GameEngine.Rows - 1, x] = TetrominoType.J;
+		}
+		// T の point(上)と left/center/right が入る 2 行は、その分だけ空けて埋める。
+		for (int x = 0; x < GameEngine.Columns; x++)
+		{
+			if (x != centerX)
+			{
+				engine.Grid[GameEngine.Rows - 3, x] = TetrominoType.J;
+			}
+			if (x < centerX - 1 || x > centerX + 1)
+			{
+				engine.Grid[GameEngine.Rows - 2, x] = TetrominoType.J;
+			}
+		}
+
+		var piece = new Tetromino(TetrominoType.T).Rotated().Rotated().Rotated();
+		piece.X = centerX - 1;
+		piece.Y = centerY - 1;
+		engine.SetCurrentForTest(piece);
+		Assert.True(engine.Rotate());
+		engine.LockCurrentForTest();
+		Assert.Equal(4, engine.PendingClearRows.Count);
+
+		engine.CommitClear();
+
+		Assert.Equal(4, engine.Lines);
+		// Perfect Clear テーブル[4]=2000 が優先される。
+		// 加算方式であれば T-Spin Full[3]=1600 + Perfect Clear[4]=2000 = 3600（×Level）になるはずだが、
+		// 現在の実装は上書きのため 2000×Level にとどまる。
+		Assert.Equal(2000 * engine.Level, engine.Score);
+	}
 }
