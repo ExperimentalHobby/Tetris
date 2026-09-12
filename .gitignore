@@ -18,5 +18,6 @@ Thumbs.db
 # Claude Code local config
 .claude/
 
-# ローカルメモ（コミット対象外）
-docs/
+# ローカルメモ（Issue対応時の一時的な作業プランのみコミット対象外。
+# docs/plans/ 等の設計ドキュメントは共有管理するため対象外にしない）
+docs/*-Plan.md
