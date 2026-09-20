@@ -550,6 +550,8 @@ public sealed class GameEngine
 		}
 
 		// Perfect Clear（全消し）: 消去後に盤面が完全に空になった場合、通常/T-Spinの得点を専用テーブルで上書きする。
+		// これは意図的な仕様であり、一般的なガイドライン（通常得点への加算）とは異なる。
+		// 本作独自のシンプルな得点体系として、加算方式へは変更しないと判断した（Issue #72 参照）。
 		if (IsBoardEmpty())
 		{
 			int[] perfectClearTable = { 0, 800, 1200, 1800, 2000 };
