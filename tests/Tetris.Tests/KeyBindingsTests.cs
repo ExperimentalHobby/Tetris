@@ -88,6 +88,21 @@ public class KeyBindingsTests
 	}
 
 	/// <summary>
+	/// 保存済み辞書に一部の操作が欠けている場合、欠落した操作は既定値のまま復元されることを確認する。
+	/// パス条件: MoveLeft のみを含む辞書から復元した場合、MoveLeft は保存値、Rotate 等は既定値のまま。
+	/// </summary>
+	[Fact]
+	public void FromSavedWithMissingActionsKeepsDefaultForMissingOnes()
+	{
+		var saved = new Dictionary<GameAction, Key> { [GameAction.MoveLeft] = Key.A };
+
+		var bindings = KeyBindings.FromSaved(saved);
+
+		Assert.Equal(Key.A, bindings.GetKey(GameAction.MoveLeft));
+		Assert.Equal(Key.Up, bindings.GetKey(GameAction.Rotate));
+	}
+
+	/// <summary>
 	/// ToDictionary() が内部辞書のコピーを返し、戻り値を変更しても元の KeyBindings に影響しないことを確認する。
 	/// パス条件: 戻り値を Dictionary にキャストして書き換えても GetKey の結果が変わらない。
 	/// </summary>
