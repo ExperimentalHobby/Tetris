@@ -71,6 +71,24 @@ public class SoundSettingsServiceTests : IDisposable
 	}
 
 	/// <summary>
+	/// 保存ファイルの中身が JSON としては正しいが null（"null" というJSON値）の場合、
+	/// 例外を投げず既定値を返すことを確認する。
+	/// パス条件: ファイルの内容が "null" のとき Load() が既定値（音量 1.0 / ミュート false）を返す。
+	/// </summary>
+	[Fact]
+	public void LoadWhenFileContentIsJsonNullReturnsDefault()
+	{
+		Directory.CreateDirectory(_tempDir);
+		File.WriteAllText(Path.Combine(_tempDir, "sound.json"), "null");
+		var service = CreateService();
+
+		var settings = service.Load();
+
+		Assert.Equal(1.0, settings.Volume);
+		Assert.False(settings.IsMuted);
+	}
+
+	/// <summary>
 	/// 範囲外・非有限の音量が安全な値に補正されて読み込まれることを確認する。
 	/// パス条件: 保存ファイルに 5.0 / -1.0 / 無限大が入っていても Load() の Volume が 0.0〜1.0 に収まる。
 	/// </summary>
