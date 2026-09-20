@@ -52,4 +52,54 @@ public class AutoRepeatSettingsServiceTests : IDisposable
 		Assert.Equal(TimeSpan.FromMilliseconds(200), result.Das);
 		Assert.Equal(TimeSpan.FromMilliseconds(30), result.Arr);
 	}
+
+	/// <summary>
+	/// 保存ファイルの中身が JSON として解釈できない場合、例外を投げず既定値を返すことを確認する。
+	/// パス条件: 不正な内容のファイルを直接書いた後 Load() が DefaultDas を返す。
+	/// </summary>
+	[Fact]
+	public void LoadWhenFileIsCorruptedReturnsDefaultSettings()
+	{
+		Directory.CreateDirectory(_tempDir);
+		File.WriteAllText(Path.Combine(_tempDir, "autorepeat.json"), "{ this is not valid json");
+		var service = CreateService();
+
+		var result = service.Load();
+
+		Assert.Equal(AutoRepeatController.DefaultDas, result.Das);
+	}
+
+	/// <summary>
+	/// 保存ファイルの中身が JSON としては正しいが null（"null" というJSON値）の場合、
+	/// 例外を投げず既定値を返すことを確認する。
+	/// パス条件: ファイルの内容が "null" のとき Load() が DefaultDas を返す。
+	/// </summary>
+	[Fact]
+	public void LoadWhenFileContentIsJsonNullReturnsDefaultSettings()
+	{
+		Directory.CreateDirectory(_tempDir);
+		File.WriteAllText(Path.Combine(_tempDir, "autorepeat.json"), "null");
+		var service = CreateService();
+
+		var result = service.Load();
+
+		Assert.Equal(AutoRepeatController.DefaultDas, result.Das);
+	}
+
+	/// <summary>
+	/// 保存ファイルの値が不正（DAS が負の値）で AutoRepeatSettings.TryCreate が失敗する場合、
+	/// 例外を投げず既定値を返すことを確認する。
+	/// パス条件: DasMs に負の値を書き込んだ後 Load() が DefaultDas を返す。
+	/// </summary>
+	[Fact]
+	public void LoadWhenSavedValueIsInvalidReturnsDefaultSettings()
+	{
+		Directory.CreateDirectory(_tempDir);
+		File.WriteAllText(Path.Combine(_tempDir, "autorepeat.json"), "{\"DasMs\":-1,\"ArrMs\":30}");
+		var service = CreateService();
+
+		var result = service.Load();
+
+		Assert.Equal(AutoRepeatController.DefaultDas, result.Das);
+	}
 }

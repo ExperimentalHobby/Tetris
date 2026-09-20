@@ -80,4 +80,21 @@ public class HighScoreServiceTests : IDisposable
 
 		Assert.Equal(300, result);
 	}
+
+	/// <summary>
+	/// 保存ファイルの中身が壊れている（JSON として解釈できない）場合、
+	/// 例外を投げず 0 を返す（既定値へのフォールバック）ことを確認する。
+	/// パス条件: 不正な内容のファイルを直接書いた後 Load() が 0 を返す。
+	/// </summary>
+	[Fact]
+	public void LoadWhenFileIsCorruptedReturnsZero()
+	{
+		Directory.CreateDirectory(_tempDir);
+		File.WriteAllText(Path.Combine(_tempDir, "highscore.json"), "{ this is not valid json");
+		var service = CreateService();
+
+		var result = service.Load();
+
+		Assert.Equal(0, result);
+	}
 }

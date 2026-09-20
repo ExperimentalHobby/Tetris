@@ -1171,6 +1171,125 @@ public class GameEngineTests
 	}
 
 	/// <summary>
+	/// Start() 前（落下中のピースが無い状態）で SoftDrop しても例外を投げず何も起きないことを確認する。
+	/// パス条件: StepDown の Current is null ガードにより Score は 0 のまま。
+	/// </summary>
+	[Fact]
+	public void SoftDropBeforeStartDoesNothing()
+	{
+		var engine = new GameEngine();
+
+		engine.SoftDrop();
+
+		Assert.Equal(0, engine.Score);
+		Assert.Null(engine.Current);
+	}
+
+	/// <summary>
+	/// Start() 前（落下中のピースが無い状態）で HardDrop しても例外を投げず何も起きないことを確認する。
+	/// パス条件: HardDrop の Current is null ガードにより Score は 0 のまま。
+	/// </summary>
+	[Fact]
+	public void HardDropBeforeStartDoesNothing()
+	{
+		var engine = new GameEngine();
+
+		engine.HardDrop();
+
+		Assert.Equal(0, engine.Score);
+		Assert.Null(engine.Current);
+	}
+
+	/// <summary>
+	/// Start() 前（落下中のピースが無い状態）で Rotate すると false を返し、例外を投げないことを確認する。
+	/// パス条件: TryRotate の Current is null ガードにより false が返る。
+	/// </summary>
+	[Fact]
+	public void RotateBeforeStartReturnsFalse()
+	{
+		var engine = new GameEngine();
+
+		Assert.False(engine.Rotate());
+	}
+
+	/// <summary>
+	/// 落下中のピースが無い状態で固定処理（LockPiece）を呼んでも例外を投げず何も起きないことを確認する。
+	/// パス条件: LockPiece の Current is null ガードにより PieceCount 等が変化しない。
+	/// </summary>
+	[Fact]
+	public void LockCurrentForTestWithoutCurrentPieceDoesNothing()
+	{
+		var engine = new GameEngine();
+
+		engine.LockCurrentForTest();
+
+		Assert.Equal(0, engine.PieceCount);
+		Assert.Empty(engine.PendingClearRows);
+	}
+
+	/// <summary>
+	/// 消去待ちの行が無い状態で CommitClear を呼んでも何も起きないことを確認する。
+	/// パス条件: CommitClear の _pendingClear.Count == 0 ガードにより Score/Lines が変化しない。
+	/// </summary>
+	[Fact]
+	public void CommitClearWithNoPendingClearDoesNothing()
+	{
+		var engine = StartedEngine();
+		Assert.Empty(engine.PendingClearRows);
+
+		engine.CommitClear();
+
+		Assert.Equal(0, engine.Score);
+		Assert.Equal(0, engine.Lines);
+	}
+
+	/// <summary>
+	/// O ピースはウォールキックテーブルを引かず、常に NoKick（オフセット 0,0）経路で回転することを確認する。
+	/// パス条件: 周囲が空いた状態で Rotate() が true を返し、RotationState が 1 進む
+	/// （O は見た目上は変化しないが、内部状態としては回転が成立する）。
+	/// </summary>
+	[Fact]
+	public void RotateOPieceUsesNoKickPath()
+	{
+		var engine = StartedEngine();
+		engine.SetCurrentForTest(new Tetromino(TetrominoType.O) { X = 4, Y = 10 });
+
+		Assert.True(engine.Rotate());
+
+		Assert.Equal(1, engine.Current!.RotationState);
+	}
+
+	/// <summary>
+	/// SRS の 5 候補すべてが盤面と衝突する場合、回転が完全に失敗することを確認する。
+	/// パス条件: ピース自身の現在位置以外を全て埋めた盤面では、回転後のどの候補位置も
+	/// 埋まっているセルと重なるため Rotate() が false を返し、姿勢・位置とも変化しない。
+	/// </summary>
+	[Fact]
+	public void RotateFailsWhenAllKickCandidatesAreBlocked()
+	{
+		var engine = StartedEngine();
+		var piece = new Tetromino(TetrominoType.T) { X = 4, Y = 10 };
+		engine.SetCurrentForTest(piece);
+
+		var occupied = piece.Blocks().ToHashSet();
+		for (int y = 0; y < GameEngine.Rows; y++)
+		{
+			for (int x = 0; x < GameEngine.Columns; x++)
+			{
+				if (!occupied.Contains((x, y)))
+				{
+					engine.Grid[y, x] = TetrominoType.J;
+				}
+			}
+		}
+
+		Assert.False(engine.Rotate());
+		Assert.Equal(0, engine.Current!.RotationState);
+		Assert.Equal(4, engine.Current!.X);
+		Assert.Equal(10, engine.Current!.Y);
+	}
+
+	/// <summary>
 	/// T-Spin Full が 4 ライン消去に絡んでも得点テーブルの範囲外参照で落ちないことを確認する。
 	/// T ピースは最大 3 行しか占有しないため通常プレイでは起こらないが、盤面を直接操作すると
 	/// 4 行同時消去と T-Spin Full が同時に成立し、従来は IndexOutOfRangeException になっていた。
