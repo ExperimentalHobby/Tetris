@@ -87,6 +87,8 @@ public partial class MainWindow : Window
 		// 復帰後にピースが動き続けるのを防ぐため、非アクティブ化の時点で押下状態を解除する。
 		// モーダルダイアログ（KEY CONFIG / DAS/ARR CONFIG）を開いた場合もここを通る。
 		Deactivated += (_, _) => _viewModel.ReleaseDirectionKeys();
+		// 音量/ミュート設定の保存はデバウンスされるため、閉じる際に保留中の変更を確実に永続化する。
+		Closing += (_, _) => _viewModel.FlushSoundSettings();
 		Render();
 	}
 

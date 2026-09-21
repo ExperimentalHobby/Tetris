@@ -356,6 +356,7 @@ public class GameViewModelTests : IDisposable
 	{
 		var vm = CreateViewModel();
 		vm.Volume = 0.25;
+		vm.FlushSoundSettings(); // 保存はデバウンスされるため、即座に確定させる（Issue #107）。
 
 		var reloaded = CreateViewModel();
 
@@ -373,6 +374,7 @@ public class GameViewModelTests : IDisposable
 		Assert.False(vm.IsMuted);
 
 		vm.ToggleMuteCommand.Execute(null);
+		vm.FlushSoundSettings(); // 保存はデバウンスされるため、即座に確定させる（Issue #107）。
 
 		var reloaded = CreateViewModel();
 		Assert.True(reloaded.IsMuted);
