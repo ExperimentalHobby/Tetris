@@ -17,11 +17,15 @@ public sealed class SoundEffectService
 	private readonly Dictionary<string, MediaPlayer> _players = new();
 	private double _volume = 1.0;
 
-	/// <summary>再生音量（0.0〜1.0）。範囲外の値は自動的にクランプされる。</summary>
+	/// <summary>
+	/// 再生音量（0.0〜1.0）。範囲外の値は自動的にクランプされる。
+	/// NaN や無限大は Math.Clamp でも NaN のまま返ってしまう（<see cref="Services.SoundSettings.Create"/> 参照）ため、
+	/// 非有限の値が渡された場合は既定値（1.0）にフォールバックする。
+	/// </summary>
 	public double Volume
 	{
 		get => _volume;
-		set => _volume = Math.Clamp(value, 0.0, 1.0);
+		set => _volume = double.IsFinite(value) ? Math.Clamp(value, 0.0, 1.0) : 1.0;
 	}
 
 	/// <summary>ミュート中かどうか。true の間は <see cref="Volume"/> に関わらず無音になる。</summary>

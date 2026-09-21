@@ -52,6 +52,23 @@ public class SoundEffectServiceTests
 	}
 
 	/// <summary>
+	/// Volume に非有限の値（NaN・正負の無限大）を設定すると、既定値(1.0)にフォールバックすることを確認する。
+	/// Math.Clamp(NaN, 0, 1) は NaN を返してしまうため、SoundSettings.Create と同様の防御が必要。
+	/// </summary>
+	[Theory]
+	[InlineData(double.NaN)]
+	[InlineData(double.PositiveInfinity)]
+	[InlineData(double.NegativeInfinity)]
+	public void VolumeWithNonFiniteValueFallsBackToDefault(double invalidValue)
+	{
+		var service = new SoundEffectService(Path.GetTempPath());
+
+		service.Volume = invalidValue;
+
+		Assert.Equal(1.0, service.Volume);
+	}
+
+	/// <summary>
 	/// 新規インスタンスの IsMuted が false（ミュートされていない）であることを確認する。
 	/// </summary>
 	[Fact]
