@@ -182,6 +182,13 @@ public sealed class GameEngine
 		_nextQueue.RemoveAt(0);
 		_nextQueue.Add(NextFromBag());
 		SpawnPiece(type);
+		if (!IsGameOver)
+		{
+			// 7-bag/NEXTキューから引いた、まだ一度も出現していないピースのみをカウントする。
+			// ホールドの入れ替え（SpawnPiece を直接呼ぶ経路）は既に一度カウント済みの
+			// ピースが戻ってくるだけなので、ここでは増やさない（Issue #103）。
+			PieceCount++;
+		}
 	}
 
 	/// <summary>指定種のピースを出現位置に生成する。置けなければゲームオーバー。</summary>
@@ -200,7 +207,6 @@ public sealed class GameEngine
 			return;
 		}
 		Current = piece;
-		PieceCount++;
 		_lastActionWasRotation = false;
 		_lockDelayElapsed = TimeSpan.Zero;
 		_lockResetCount = 0;

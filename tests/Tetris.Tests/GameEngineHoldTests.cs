@@ -90,6 +90,32 @@ public class GameEngineHoldTests
 	}
 
 	/// <summary>
+	/// 保管ピースとの入れ替え（2回目以降のホールド）は、既に一度カウント済みの同じピースが
+	/// 戻ってくるだけなので、PieceCount を二重にカウントしないことを確認する（Issue #103）。
+	/// 一方、初回ホールド（NEXTから新規に引く）は正しくカウントされる。
+	/// パス条件: 初回ホールドで PieceCount が増え、入れ替え（2回目のホールド）では増えない。
+	/// </summary>
+	[Fact]
+	public void HoldSwapDoesNotDoubleCountPieceCount()
+	{
+		var engine = StartedEngine();
+		engine.SetCurrentForTest(new Tetromino(TetrominoType.T) { X = 3, Y = 0 });
+		int beforeFirstHold = engine.PieceCount;
+
+		engine.Hold(); // 初回: NEXTから新規に引く → カウントされるべき
+
+		int afterFirstHold = engine.PieceCount;
+		Assert.Equal(beforeFirstHold + 1, afterFirstHold);
+
+		engine.HardDrop(); // 設置してホールド可能に戻す
+		int afterHardDrop = engine.PieceCount;
+
+		engine.Hold(); // 入れ替え: 保管済み(T)が戻ってくるだけ → カウントされるべきでない
+
+		Assert.Equal(afterHardDrop, engine.PieceCount);
+	}
+
+	/// <summary>
 	/// 開始でホールド状態がリセットされることを確認する。
 	/// パス条件: ホールド後に Start すると HeldType が null、CanHold が true に戻る。
 	/// </summary>
