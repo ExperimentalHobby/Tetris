@@ -16,6 +16,13 @@ public sealed class GameViewModel : ObservableObject
 	private readonly DispatcherTimer _inputTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
 
 	/// <summary>
+	/// 音量/ミュート設定の保存をデバウンスする間隔。スライダー操作のたびに毎回ファイル書き込みが
+	/// 発生するのを防ぐため、この時間だけ操作が無ければまとめて1回保存する。
+	/// </summary>
+	private static readonly TimeSpan SoundSettingsSaveDebounce = TimeSpan.FromMilliseconds(500);
+	private readonly DispatcherTimer _soundSettingsSaveTimer = new() { Interval = SoundSettingsSaveDebounce };
+
+	/// <summary>
 	/// 入力タイマー 1 回分として扱う経過時間の上限。長時間のフリーズやデバッガ停止の直後に
 	/// ロックディレイやオートリピートが一気に進んでしまうのを防ぐ。
 	/// </summary>
@@ -67,6 +74,7 @@ public sealed class GameViewModel : ObservableObject
 		_leftRepeat = new AutoRepeatController(AutoRepeatSettings.Das, AutoRepeatSettings.Arr);
 		_rightRepeat = new AutoRepeatController(AutoRepeatSettings.Das, AutoRepeatSettings.Arr);
 		_engine.PieceLocked += (_, _) => _soundService.PlayLock();
+		_soundSettingsSaveTimer.Tick += (_, _) => FlushSoundSettings();
 		_timer.Tick += OnTick;
 		_inputTimer.Tick += OnInputTick;
 
@@ -404,9 +412,30 @@ public sealed class GameViewModel : ObservableObject
 
 	private void ToggleMute() => IsMuted = !IsMuted;
 
-	/// <summary>現在の音量・ミュート状態を永続化する（次回起動時に復元するため）。</summary>
+	/// <summary>
+	/// 現在の音量・ミュート状態の永続化を予約する。即座には保存せず、<see cref="SoundSettingsSaveDebounce"/>
+	/// の間これ以上操作が無ければ <see cref="FlushSoundSettings"/> でまとめて1回保存する
+	/// （スライダー操作のたびに毎回ファイル書き込みが発生するのを防ぐため）。
+	/// </summary>
 	private void SaveSoundSettings()
-		=> _soundSettingsService.Save(SoundSettings.Create(_soundService.Volume, _soundService.IsMuted));
+	{
+		_soundSettingsSaveTimer.Stop();
+		_soundSettingsSaveTimer.Start();
+	}
+
+	/// <summary>
+	/// デバウンス中の保存があれば即座に確定する。ウィンドウを閉じる際など、保留中の変更を
+	/// 失わずに永続化したいタイミングで呼ぶ。保留中の変更が無ければ何もしない。
+	/// </summary>
+	public void FlushSoundSettings()
+	{
+		if (!_soundSettingsSaveTimer.IsEnabled)
+		{
+			return;
+		}
+		_soundSettingsSaveTimer.Stop();
+		_soundSettingsService.Save(SoundSettings.Create(_soundService.Volume, _soundService.IsMuted));
+	}
 
 	private void TogglePause()
 	{
