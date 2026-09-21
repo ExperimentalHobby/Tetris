@@ -54,6 +54,7 @@ public sealed class GameViewModel : ObservableObject
 	private double _lpm;
 	private int _combo;
 	private bool _isBackToBack;
+	private string _startKeyLabel = "Enter";
 
 	public GameViewModel() : this(new HighScoreService(), new AutoRepeatSettingsService(), new SoundEffectService(), new SoundSettingsService())
 	{
@@ -113,6 +114,30 @@ public sealed class GameViewModel : ObservableObject
 	public int Level { get => _level; private set => SetProperty(ref _level, value); }
 	public int HighScore { get => _highScore; private set => SetProperty(ref _highScore, value); }
 	public string Status { get => _status; private set => SetProperty(ref _status, value); }
+
+	/// <summary>
+	/// 開始/リスタート操作の表示用ラベル（例: "Enter"）。GameEngine/GameViewModel は WPF の
+	/// Key 型に依存させたくないため、表示用の文字列のみを View（MainWindow）から設定してもらう。
+	/// キーコンフィグの変更に合わせて View（UpdateControlsHelpText）が更新する。
+	/// </summary>
+	public string StartKeyLabel
+	{
+		get => _startKeyLabel;
+		set
+		{
+			if (SetProperty(ref _startKeyLabel, value))
+			{
+				if (!_isStarted)
+				{
+					Status = $"{_startKeyLabel} で開始";
+				}
+				else if (_engine.IsGameOver)
+				{
+					Status = $"GAME OVER\n{_startKeyLabel} で再開";
+				}
+			}
+		}
+	}
 
 	/// <summary>現在のDAS/ARR設定（キーコンフィグと同様、DAS/ARR設定画面での表示・保存に使用）。</summary>
 	public AutoRepeatSettings AutoRepeatSettings { get; private set; }
@@ -495,7 +520,7 @@ public sealed class GameViewModel : ObservableObject
 		{
 			_timer.Stop();
 			StopInputTimer();
-			Status = "GAME OVER\nEnter で再開";
+			Status = $"GAME OVER\n{StartKeyLabel} で再開";
 			if (!_gameOverNotified)
 			{
 				_gameOverNotified = true;
