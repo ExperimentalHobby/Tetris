@@ -43,10 +43,21 @@ public sealed class KeyBindingService
 		}
 	}
 
-	/// <summary>キーコンフィグをファイルに保存する。保存先ディレクトリが無ければ作成する。</summary>
+	/// <summary>
+	/// キーコンフィグをファイルに保存する。保存先ディレクトリが無ければ作成する。
+	/// 保存先ディレクトリの作成やファイル書き込みに失敗しても、<see cref="Load"/> と対称的に
+	/// 例外を投げず失敗を無視する（保存先の権限不足・容量不足等でアプリがクラッシュしないため）。
+	/// </summary>
 	public void Save(KeyBindings bindings)
 	{
-		Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
-		File.WriteAllText(_filePath, JsonSerializer.Serialize(bindings.ToDictionary()));
+		try
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+			File.WriteAllText(_filePath, JsonSerializer.Serialize(bindings.ToDictionary()));
+		}
+		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+		{
+			// 保存に失敗してもゲームの進行に影響させない。
+		}
 	}
 }

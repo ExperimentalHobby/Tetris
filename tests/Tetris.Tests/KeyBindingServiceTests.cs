@@ -87,4 +87,22 @@ public class KeyBindingServiceTests : IDisposable
 
 		Assert.Equal(Key.Up, result.GetKey(GameAction.Rotate));
 	}
+
+	/// <summary>
+	/// 保存先ディレクトリの代わりに同名のファイルが存在し Directory.CreateDirectory が失敗する場合でも、
+	/// Save() が例外を投げないことを確認する（Load() と対称的な堅牢性、Issue #104）。
+	/// パス条件: 保存先ディレクトリと同名のファイルを作っておいても Save() が例外を投げない。
+	/// </summary>
+	[Fact]
+	public void SaveWhenDirectoryCannotBeCreatedDoesNotThrow()
+	{
+		var blockedDir = Path.Combine(_tempDir, "blocked");
+		Directory.CreateDirectory(_tempDir);
+		File.WriteAllBytes(blockedDir, Array.Empty<byte>());
+		var service = new KeyBindingService(blockedDir);
+
+		var ex = Record.Exception(() => service.Save(KeyBindings.Default()));
+
+		Assert.Null(ex);
+	}
 }
