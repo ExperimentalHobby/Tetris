@@ -70,4 +70,38 @@ public class WpfTestHelpersTests
 			Assert.Equal(Key.Escape, observed);
 		});
 	}
+
+	/// <summary>パス条件: SimulateKeyUp() で対象要素の PreviewKeyUp ハンドラが指定したキーで呼ばれる。</summary>
+	[Fact]
+	public void SimulateKeyUpRaisesPreviewKeyUpWithSpecifiedKey()
+	{
+		StaTestRunner.Run(() =>
+		{
+			var window = new Window();
+			Key? observed = null;
+			window.PreviewKeyUp += (_, e) => observed = e.Key;
+
+			WpfTestHelpers.SimulateKeyUp(window, Key.Right);
+
+			Assert.Equal(Key.Right, observed);
+		});
+	}
+
+	/// <summary>パス条件: SimulateKeyDown() の isRepeat 引数どおりに e.IsRepeat が設定される。</summary>
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void SimulateKeyDownSetsIsRepeatAsSpecified(bool isRepeat)
+	{
+		StaTestRunner.Run(() =>
+		{
+			var window = new Window();
+			bool? observed = null;
+			window.PreviewKeyDown += (_, e) => observed = e.IsRepeat;
+
+			WpfTestHelpers.SimulateKeyDown(window, Key.Left, isRepeat);
+
+			Assert.Equal(isRepeat, observed);
+		});
+	}
 }

@@ -43,7 +43,7 @@ public partial class MainWindow : Window
 	/// <summary>ライン消去アニメーションの総再生時間。</summary>
 	private static readonly TimeSpan LineClearDuration = TimeSpan.FromMilliseconds(480);
 
-	private readonly GameViewModel _viewModel = new();
+	private readonly GameViewModel _viewModel;
 	private readonly DispatcherTimer _buryTimer = new() { Interval = FillStep };
 	private readonly DispatcherTimer _lineClearTimer = new() { Interval = LineClearDuration };
 	private readonly Random _random = new();
@@ -54,13 +54,20 @@ public partial class MainWindow : Window
 
 	/// <summary>現在のフレームで払い出し済みのプール要素数。</summary>
 	private int _usedCellCount;
-	private readonly KeyBindingService _keyBindingService = new();
+	private readonly KeyBindingService _keyBindingService;
 	private KeyBindings _keyBindings = KeyBindings.Default();
 	private int _buryRow;
 	private Storyboard? _gameOverInStoryboard;
 
-	public MainWindow()
+	public MainWindow() : this(new GameViewModel(), new KeyBindingService())
 	{
+	}
+
+	/// <summary>テスト用: GameViewModel と KeyBindingService を注入してインスタンスを生成する（実ファイルへの副作用を避けるため）。</summary>
+	internal MainWindow(GameViewModel viewModel, KeyBindingService keyBindingService)
+	{
+		_viewModel = viewModel;
+		_keyBindingService = keyBindingService;
 		InitializeComponent();
 		DataContext = _viewModel;
 		_keyBindings = _keyBindingService.Load();

@@ -64,16 +64,36 @@ internal static class WpfTestHelpers
 		throw new InvalidOperationException($"Content '{content}' の Button が見つかりません。");
 	}
 
+	/// <summary>KeyEventArgs.IsRepeat の内部バッキングフィールド。OS のキーボード状態から自動算出されるため、
+	/// テストから IsRepeat=true の入力を作るにはリフレクションで直接書き換える必要がある。</summary>
+	private static readonly System.Reflection.FieldInfo IsRepeatField =
+		typeof(KeyEventArgs).GetField("_isRepeat", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+
 	/// <summary>
 	/// 指定した要素に対して PreviewKeyDown を実際の RoutedEvent 経由で発火させる。
-	/// キーコンフィグのキー変更待機（KeyConfigWindow.OnDialogPreviewKeyDown）を、
-	/// 実キーボード入力を使わずに検証するために使う。
+	/// キーコンフィグのキー変更待機（KeyConfigWindow.OnDialogPreviewKeyDown）や
+	/// MainWindow.OnPreviewKeyDown を、実キーボード入力を使わずに検証するために使う。
 	/// </summary>
-	public static void SimulateKeyDown(UIElement target, Key key)
+	/// <param name="isRepeat">
+	/// OS のキーリピートによる入力を模擬するかどうか。KeyEventArgs.IsRepeat は実際のキーボード状態から
+	/// 算出されるためコンストラクタ引数では指定できず、内部バッキングフィールドを直接書き換える。
+	/// </param>
+	public static void SimulateKeyDown(UIElement target, Key key, bool isRepeat = false)
 	{
 		var args = new KeyEventArgs(Keyboard.PrimaryDevice, new FakePresentationSource(), 0, key)
 		{
 			RoutedEvent = UIElement.PreviewKeyDownEvent,
+		};
+		IsRepeatField.SetValue(args, isRepeat);
+		target.RaiseEvent(args);
+	}
+
+	/// <summary>指定した要素に対して PreviewKeyUp を実際の RoutedEvent 経由で発火させる。</summary>
+	public static void SimulateKeyUp(UIElement target, Key key)
+	{
+		var args = new KeyEventArgs(Keyboard.PrimaryDevice, new FakePresentationSource(), 0, key)
+		{
+			RoutedEvent = UIElement.PreviewKeyUpEvent,
 		};
 		target.RaiseEvent(args);
 	}
