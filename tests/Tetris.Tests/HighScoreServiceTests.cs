@@ -97,4 +97,22 @@ public class HighScoreServiceTests : IDisposable
 
 		Assert.Equal(0, result);
 	}
+
+	/// <summary>
+	/// 保存先ディレクトリの代わりに同名のファイルが存在し Directory.CreateDirectory が失敗する場合でも、
+	/// Save() が例外を投げないことを確認する（Load() と対称的な堅牢性、Issue #104）。
+	/// パス条件: 保存先ディレクトリと同名のファイルを作っておいても Save() が例外を投げない。
+	/// </summary>
+	[Fact]
+	public void SaveWhenDirectoryCannotBeCreatedDoesNotThrow()
+	{
+		var blockedDir = Path.Combine(_tempDir, "blocked");
+		Directory.CreateDirectory(_tempDir);
+		File.WriteAllBytes(blockedDir, Array.Empty<byte>()); // "blocked" という名前のファイルを作り、同名のディレクトリを作れなくする
+		var service = new HighScoreService(blockedDir);
+
+		var ex = Record.Exception(() => service.Save(100));
+
+		Assert.Null(ex);
+	}
 }

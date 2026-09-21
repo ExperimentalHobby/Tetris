@@ -41,12 +41,23 @@ public sealed class SoundSettingsService
 		}
 	}
 
-	/// <summary>効果音設定をファイルに保存する。保存先ディレクトリが無ければ作成する。</summary>
+	/// <summary>
+	/// 効果音設定をファイルに保存する。保存先ディレクトリが無ければ作成する。
+	/// 保存先ディレクトリの作成やファイル書き込みに失敗しても、<see cref="Load"/> と対称的に
+	/// 例外を投げず失敗を無視する（保存先の権限不足・容量不足等でアプリがクラッシュしないため）。
+	/// </summary>
 	public void Save(SoundSettings settings)
 	{
-		Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
-		var dto = new Dto { Volume = settings.Volume, IsMuted = settings.IsMuted };
-		File.WriteAllText(_filePath, JsonSerializer.Serialize(dto));
+		try
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+			var dto = new Dto { Volume = settings.Volume, IsMuted = settings.IsMuted };
+			File.WriteAllText(_filePath, JsonSerializer.Serialize(dto));
+		}
+		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+		{
+			// 保存に失敗してもゲームの進行に影響させない。
+		}
 	}
 
 	/// <summary>JSON 永続化用のデータ転送オブジェクト。</summary>
