@@ -40,7 +40,13 @@ internal static class StaTestRunner
 	/// テスト対象が DispatcherTimer に登録したハンドラを、フェイクではなく実際の
 	/// メッセージポンプ経由で発火させて検証するために使う。
 	/// </summary>
-	public static void RunWithMessagePump(Action<Dispatcher> setup, Func<bool> until, TimeSpan timeout)
+	/// <param name="afterPump">
+	/// メッセージポンプが終わった直後、同じ STA スレッド上（スレッド終了前）で実行する処理。
+	/// WPF の DependencyObject はスレッドアフィニティを持ち、生成したスレッドが終了すると
+	/// 別スレッドからは触れなくなる（アクセス時に例外になる）ため、Window 等の最終状態を
+	/// 読み取る／操作する後処理はここで行う必要がある。
+	/// </param>
+	public static void RunWithMessagePump(Action<Dispatcher> setup, Func<bool> until, TimeSpan timeout, Action? afterPump = null)
 	{
 		Exception? captured = null;
 		var thread = new Thread(() =>
@@ -63,6 +69,7 @@ internal static class StaTestRunner
 				};
 				poller.Start();
 				Dispatcher.PushFrame(frame);
+				afterPump?.Invoke();
 			}
 			catch (Exception ex)
 			{

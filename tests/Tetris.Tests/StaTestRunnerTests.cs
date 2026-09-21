@@ -57,4 +57,25 @@ public class StaTestRunnerTests
 
 		Assert.True(tickCount >= 3);
 	}
+
+	/// <summary>
+	/// パス条件: afterPump は until() が true になった直後、同じ STA スレッド上（Dispatcher 終了前）で実行される。
+	/// WPF の DependencyObject はスレッドアフィニティを持ち、生成したスレッドが終了すると
+	/// 別スレッドから触れなくなる（VerifyAccess で例外になる）ため、最終確認はここで行う必要がある。
+	/// </summary>
+	[Fact]
+	public void RunWithMessagePumpRunsAfterPumpOnSameStaThreadBeforeExit()
+	{
+		ApartmentState? setupThreadApartment = null;
+		ApartmentState? afterPumpThreadApartment = null;
+
+		StaTestRunner.RunWithMessagePump(
+			setup: _ => setupThreadApartment = Thread.CurrentThread.GetApartmentState(),
+			until: () => true,
+			timeout: TimeSpan.FromSeconds(1),
+			afterPump: () => afterPumpThreadApartment = Thread.CurrentThread.GetApartmentState());
+
+		Assert.Equal(ApartmentState.STA, setupThreadApartment);
+		Assert.Equal(ApartmentState.STA, afterPumpThreadApartment);
+	}
 }
