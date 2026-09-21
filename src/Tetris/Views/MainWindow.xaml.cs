@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -35,7 +36,11 @@ public partial class MainWindow : Window
 	private static readonly SolidColorBrush CellStrokeBrush = CreateFrozenBrush(Color.FromArgb(80, 0, 0, 0));
 
 	/// <summary>色ごとの塗りブラシのキャッシュ。毎フレームの SolidColorBrush 生成を避けるため使い回す。</summary>
-	private static readonly Dictionary<Color, SolidColorBrush> FillBrushes = new();
+	/// <summary>
+	/// 通常のアプリ実行では MainWindow は常に1つ・UIスレッドも1つだが、テストで複数の MainWindow を
+	/// 異なるスレッド上に生成するとここへの並行アクセスが起こり得るため、スレッドセーフな実装にしている。
+	/// </summary>
+	private static readonly ConcurrentDictionary<Color, SolidColorBrush> FillBrushes = new();
 
 	/// <summary>盤面セル用 Rectangle のプール上限（固定ブロック 200 + ゴースト 4 + 現在ピース 4）。</summary>
 	private const int CellPoolSize = GameEngine.Rows * GameEngine.Columns + 8;
@@ -571,12 +576,7 @@ public partial class MainWindow : Window
 	/// <summary>指定色の塗りブラシをキャッシュから返す（無ければ生成して凍結し登録する）。</summary>
 	private static SolidColorBrush GetFillBrush(Color color)
 	{
-		if (!FillBrushes.TryGetValue(color, out var brush))
-		{
-			brush = CreateFrozenBrush(color);
-			FillBrushes[color] = brush;
-		}
-		return brush;
+		return FillBrushes.GetOrAdd(color, CreateFrozenBrush);
 	}
 
 	/// <summary>
