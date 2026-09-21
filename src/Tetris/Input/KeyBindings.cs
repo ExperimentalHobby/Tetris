@@ -31,15 +31,25 @@ public sealed class KeyBindings
 
 	/// <summary>
 	/// 保存済みの辞書から復元する。未知/欠落した操作は既定値で補う（バージョン間の互換性のため）。
+	/// 保存内容に重複したキー割り当てが含まれる場合（保存ファイルの手動改変等）、列挙順で先に処理された
+	/// 操作を優先し、後から処理された操作は既定値にフォールバックする（衝突する2操作が同じキーを
+	/// 取り合う事態を避けるため）。既定値どうしの衝突など、保存値以外が原因の衝突までは解決しない。
 	/// </summary>
 	public static KeyBindings FromSaved(IReadOnlyDictionary<GameAction, Key> saved)
 	{
 		var bindings = Default();
+		var usedKeys = new HashSet<Key>();
 		foreach (var action in Enum.GetValues<GameAction>())
 		{
-			if (saved.TryGetValue(action, out var key))
+			if (saved.TryGetValue(action, out var key) && usedKeys.Add(key))
 			{
 				bindings._map[action] = key;
+			}
+			else
+			{
+				// 保存値が無い、または既に他の操作が使用しているキーと重複する場合は既定値のまま。
+				// 以降の操作の重複判定にも使うため、既定値も使用済みキーとして登録する。
+				usedKeys.Add(bindings._map[action]);
 			}
 		}
 		return bindings;

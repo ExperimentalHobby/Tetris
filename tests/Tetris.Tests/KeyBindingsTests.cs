@@ -103,6 +103,27 @@ public class KeyBindingsTests
 	}
 
 	/// <summary>
+	/// 保存済み辞書内で複数の操作が同じキーを指定している場合、後から処理された操作は既定値に
+	/// フォールバックし、重複したキー割り当てが生成されないことを確認する。
+	/// パス条件: MoveLeft と MoveRight が両方 Key.A を指定 → MoveLeft=A（先着）、MoveRight は既定値(Right)のまま。
+	/// </summary>
+	[Fact]
+	public void FromSavedWithDuplicateKeysFallsBackLaterActionToDefault()
+	{
+		var saved = new Dictionary<GameAction, Key>
+		{
+			[GameAction.MoveLeft] = Key.A,
+			[GameAction.MoveRight] = Key.A,
+		};
+
+		var bindings = KeyBindings.FromSaved(saved);
+
+		Assert.Equal(Key.A, bindings.GetKey(GameAction.MoveLeft));
+		Assert.Equal(Key.Right, bindings.GetKey(GameAction.MoveRight));
+		Assert.NotEqual(bindings.GetKey(GameAction.MoveLeft), bindings.GetKey(GameAction.MoveRight));
+	}
+
+	/// <summary>
 	/// ToDictionary() が内部辞書のコピーを返し、戻り値を変更しても元の KeyBindings に影響しないことを確認する。
 	/// パス条件: 戻り値を Dictionary にキャストして書き換えても GetKey の結果が変わらない。
 	/// </summary>
