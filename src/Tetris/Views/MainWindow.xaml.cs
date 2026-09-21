@@ -200,10 +200,14 @@ public partial class MainWindow : Window
 		}
 	}
 
-	/// <summary>サイドパネルの操作説明テキストを現在のキーコンフィグに合わせて更新する。</summary>
+	/// <summary>
+	/// サイドパネルの操作説明テキストと、GameViewModel が持つ開始キーの表示ラベルを
+	/// 現在のキーコンフィグに合わせて更新する。
+	/// </summary>
 	private void UpdateControlsHelpText()
 	{
 		string K(GameAction action) => KeyDisplay.ToDisplayString(_keyBindings.GetKey(action));
+		_viewModel.StartKeyLabel = K(GameAction.Start);
 		ControlsHelpText.Text =
 			$"{K(GameAction.MoveLeft)} {K(GameAction.MoveRight)} : 移動\n" +
 			$"{K(GameAction.Rotate)} : 回転\n" +

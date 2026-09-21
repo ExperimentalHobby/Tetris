@@ -133,4 +133,26 @@ public class MainWindowRenderingTests : IDisposable
 			Assert.Contains("回転", window.ControlsHelpText.Text);
 		});
 	}
+
+	/// <summary>
+	/// パス条件: 開始操作のキーをリマップした状態でウィンドウを生成すると、
+	/// GameViewModel.StartKeyLabel がリマップ後のキー表示に一致する（Issue #105）。
+	/// </summary>
+	[Fact]
+	public void ConstructorSetsViewModelStartKeyLabelFromKeyBindings()
+	{
+		StaTestRunner.Run(() =>
+		{
+			var keyBindingService = new KeyBindingService(_tempDir);
+			var customBindings = KeyBindings.Default();
+			customBindings.TrySetKey(GameAction.Start, System.Windows.Input.Key.X);
+			keyBindingService.Save(customBindings);
+			var vm = CreateViewModel();
+
+			_ = new MainWindow(vm, keyBindingService);
+
+			Assert.Equal("X", vm.StartKeyLabel);
+			Assert.Equal("X で開始", vm.Status);
+		});
+	}
 }

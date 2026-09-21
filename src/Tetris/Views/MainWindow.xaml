@@ -111,7 +111,7 @@
 								<DropShadowEffect Color="#FF0000" BlurRadius="24" ShadowDepth="0" />
 							</TextBlock.Effect>
 						</TextBlock>
-						<TextBlock Text="Enter で再開"
+						<TextBlock Text="{Binding StartKeyLabel, StringFormat={}{0} で再開}"
 						           Foreground="#CDD6F4" FontSize="16"
 						           HorizontalAlignment="Center" Margin="0,16,0,0" />
 
